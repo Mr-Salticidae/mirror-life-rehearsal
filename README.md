@@ -3,6 +3,9 @@
 BW 展位互动影游 v2（对标《底特律：成为人类》）。初版（问卷+3D背景）已否决，本版为从零新建。
 设计文档见 [DESIGN.md](DESIGN.md)，MJ 剧照清单见 [assets/PROMPTS.md](assets/PROMPTS.md)。
 
+**协作者从这里开始 →** [COLLABORATION.md](COLLABORATION.md)（分工、内容基准、文风铁律、提交流程），
+内容交付模板在 [content/TEMPLATES.md](content/TEMPLATES.md)。内容组只动 `content/`，不动 `app/`。
+
 ## 快速开始
 
 ```bash
