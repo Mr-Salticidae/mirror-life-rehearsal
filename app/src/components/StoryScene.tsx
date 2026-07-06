@@ -8,6 +8,7 @@ type Beat = 'lines' | 'choices' | 'doors' | 'consequence'
 
 const CONSEQUENCE_MS = 2600
 const AUTO_ADVANCE_MS = 1700
+const HOLD_MS = 1000
 
 export default function StoryScene() {
   const nodeId = useGame(s => s.nodeId)
@@ -20,6 +21,7 @@ export default function StoryScene() {
   const [consequence, setConsequence] = useState('')
   const [timeLeft, setTimeLeft] = useState(node.timer ?? 0)
   const [holdPct, setHoldPct] = useState(0) // 长按选择进度
+  const [holdHint, setHoldHint] = useState(false) // 短按提示：这张卡要按住
 
   // 回响台词：匹配早前选择后追加
   const lines = useMemo(() => {
@@ -134,14 +136,15 @@ export default function StoryScene() {
     g().setPhase('flowchart')
   }
 
-  // 长按选择（D1 推门）：按住 1.2s 确认，松手=退缩
-  const holdRef = useRef<{ raf: number; t0: number; choice: Choice | null }>({ raf: 0, t0: 0, choice: null })
+  // 长按选择（D1 推门）：按住 HOLD_MS 确认，松手=退缩
+  const holdRef = useRef<{ raf: number; t0: number; choice: Choice | null; hintT: number }>({ raf: 0, t0: 0, choice: null, hintT: 0 })
   const holdStart = (c: Choice) => {
     sfx.click()
+    setHoldHint(false)
     holdRef.current.t0 = performance.now()
     holdRef.current.choice = c
     const step = () => {
-      const pct = Math.min(1, (performance.now() - holdRef.current.t0) / 1200)
+      const pct = Math.min(1, (performance.now() - holdRef.current.t0) / HOLD_MS)
       setHoldPct(pct)
       if (pct >= 1) { holdEnd(true); return }
       holdRef.current.raf = requestAnimationFrame(step)
@@ -154,10 +157,20 @@ export default function StoryScene() {
     holdRef.current.choice = null
     setHoldPct(0)
     // 松手时按实际按住时长兜底判定（rAF 只做视觉）
-    const heldLongEnough = holdRef.current.t0 && performance.now() - holdRef.current.t0 >= 1200
-    if ((complete || heldLongEnough) && c) pick(c)
+    const heldLongEnough = holdRef.current.t0 && performance.now() - holdRef.current.t0 >= HOLD_MS
+    if ((complete || heldLongEnough) && c) { pick(c); return }
+    // 短按/提前松手：明确告诉玩家这张卡要按住（否则在倒计时压力下会以为卡死）
+    if (c) {
+      sfx.tick()
+      setHoldHint(true)
+      clearTimeout(holdRef.current.hintT)
+      holdRef.current.hintT = window.setTimeout(() => setHoldHint(false), 1600)
+    }
   }
-  useEffect(() => () => cancelAnimationFrame(holdRef.current.raf), [])
+  useEffect(() => () => {
+    cancelAnimationFrame(holdRef.current.raf)
+    clearTimeout(holdRef.current.hintT)
+  }, [])
 
   const timerPct = node.timer ? timeLeft / node.timer : 1
   const urgent = node.timer ? timeLeft <= 3 : false
@@ -199,7 +212,8 @@ export default function StoryScene() {
           <div className="choice-zone">
             {node.choices.map(c => c.hold ? (
               <button
-                key={c.id} className="choice-card hold-card" data-testid={`choice-${c.id}`}
+                key={c.id} className={`choice-card hold-card ${holdHint ? 'hold-hint' : ''}`}
+                data-testid={`choice-${c.id}`}
                 style={{ ['--hold' as string]: holdPct }}
                 onMouseEnter={() => sfx.hover()}
                 onClick={e => e.stopPropagation()}
@@ -208,8 +222,10 @@ export default function StoryScene() {
                 onPointerLeave={() => holdEnd(false)}
               >
                 <div className="hold-fill" aria-hidden />
+                <span className="hold-badge">按 住</span>
                 <div className="t">{c.text}</div>
                 {c.sub && <div className="s">{c.sub}</div>}
+                {holdHint && <div className="hold-hint-text">松手太早了 —— 按住不放，直到门开</div>}
               </button>
             ) : (
               <button

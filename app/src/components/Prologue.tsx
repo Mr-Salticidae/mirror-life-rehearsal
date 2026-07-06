@@ -12,9 +12,9 @@ export default function Prologue() {
   const start = () => {
     if (lit) return
     sfx.spray()
-    ref.current.t0 = performance.now() - pct * 1200 // 从当前进度继续
+    ref.current.t0 = performance.now() - pct * 1000 // 从当前进度继续
     const step = () => {
-      const p = Math.min(1, (performance.now() - ref.current.t0) / 1200)
+      const p = Math.min(1, (performance.now() - ref.current.t0) / 1000)
       setPct(p)
       if (p >= 1) { ignite(); return }
       ref.current.raf = requestAnimationFrame(step)
@@ -24,7 +24,7 @@ export default function Prologue() {
   // 松手时按实际按住时长判定（rAF 只做视觉，判定不依赖它）
   const stop = () => {
     cancelAnimationFrame(ref.current.raf)
-    if (!lit && ref.current.t0 && performance.now() - ref.current.t0 >= 1200) ignite()
+    if (!lit && ref.current.t0 && performance.now() - ref.current.t0 >= 1000) ignite()
   }
   useEffect(() => () => cancelAnimationFrame(ref.current.raf), [])
 

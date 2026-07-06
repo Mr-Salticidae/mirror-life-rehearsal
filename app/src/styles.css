@@ -120,6 +120,16 @@ button { font-family: inherit; cursor: pointer; }
   background: linear-gradient(180deg, rgba(216,184,120,.12), rgba(216,184,120,.42));
   transition: height .05s linear; }
 .hold-card .t, .hold-card .s { position: relative; }
+/* 常驻角标：这张卡要按住 */
+.hold-badge { position: absolute; top: 8px; right: 10px; font-size: 10px; letter-spacing: .28em;
+  color: #e8cf96; border: 1px solid rgba(216,184,120,.5); padding: 3px 7px 3px 9px;
+  animation: pulseSoft 2s ease-in-out infinite; }
+/* 短按提示：抖动 + 文案 */
+.hold-card.hold-hint { animation: holdShake .4s ease; border-color: #e8cf96; }
+@keyframes holdShake { 20% { transform: translateX(-7px); } 45% { transform: translateX(6px); }
+  70% { transform: translateX(-4px); } 90% { transform: translateX(2px); } }
+.hold-hint-text { position: relative; margin-top: 10px; font-size: 11.5px; letter-spacing: .18em;
+  color: #f0d8a0; animation: fadeSlideUp .3s ease both; }
 
 /* QTE 倒计时环 */
 .qte-ring { position: absolute; bottom: 42vh; left: 50%; transform: translateX(-50%); z-index: 26;
