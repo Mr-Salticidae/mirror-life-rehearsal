@@ -25,6 +25,20 @@ export function startBgm() {
   bgmEl = el
 }
 
+// 迷你游戏期间 BGM 闪避（让位给游戏音效），结束恢复
+let duckTween = 0
+export function duckBgm(on: boolean) {
+  if (!bgmEl) return
+  const target = on ? 0.1 : 0.35
+  clearInterval(duckTween)
+  duckTween = window.setInterval(() => {
+    if (!bgmEl) { clearInterval(duckTween); return }
+    const d = target - bgmEl.volume
+    if (Math.abs(d) < 0.02) { bgmEl.volume = target; clearInterval(duckTween); return }
+    bgmEl.volume += d * 0.2
+  }, 50)
+}
+
 function env(node: GainNode, t0: number, peak: number, decay: number) {
   const g = node.gain
   g.setValueAtTime(0.0001, t0)

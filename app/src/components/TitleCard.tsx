@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useGame } from '../store'
 import { CHAPTER_FLOW, NODES } from '../story'
+import Dust from './Dust'
 import { sfx } from '../lib/audio'
 
 const CH_NUM = ['壹', '贰', '叁']
@@ -19,6 +20,8 @@ export default function TitleCard() {
 
   return (
     <div className="title-card">
+      <div className="title-streak" aria-hidden />
+      <Dust count={16} />
       <div className="ch">CHAPTER {CH_NUM[chapterIndex]}</div>
       <div className="big">{first.age}</div>
       <div className="line" />

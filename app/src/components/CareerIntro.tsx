@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useGame, careerOf } from '../store'
 import { CAREER_INFO } from '../story'
 import { useStill } from './useStill'
+import ParallaxStill from './ParallaxStill'
 import { sfx } from '../lib/audio'
 
 export default function CareerIntro() {
@@ -19,7 +20,8 @@ export default function CareerIntro() {
 
   return (
     <div className="scene scene-fade" data-testid="career-intro">
-      <div className="scene-still" style={{ backgroundImage: `url(${still})` }} />
+      <ParallaxStill url={still} />
+      <div className="light-sweep" aria-hidden />
       <div className="career-intro-copy">
         <div className="career-name">{info.name} · {info.title}</div>
         <div className="subtitle" style={{ fontSize: 'clamp(15px,1.6vw,22px)' }}>

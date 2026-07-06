@@ -66,10 +66,30 @@ export default function EndingReport() {
       ctx.fillStyle = '#d8b878'
       ctx.font = '40px serif'
       ctx.fillText(`「${title}」`, W / 2, 390)
+
+      // 双层金框
+      ctx.strokeStyle = 'rgba(216,184,120,.7)'
+      ctx.lineWidth = 3
+      ctx.strokeRect(36, 36, W - 72, H - 72)
+      ctx.lineWidth = 1
+      ctx.strokeRect(50, 50, W - 100, H - 100)
+
+      // 评级印章（右上，微倾斜）
       if (g.gameRank) {
-        ctx.fillStyle = '#ffd86a'
-        ctx.font = 'bold 34px serif'
-        ctx.fillText(`RANK ${g.gameRank}`, W / 2, 448)
+        ctx.save()
+        ctx.translate(W - 165, 200)
+        ctx.rotate(-0.12)
+        ctx.strokeStyle = g.gameRank === 'S' ? '#ffd86a' : g.gameRank === 'A' ? '#8fd8ff' : '#b8c0cc'
+        ctx.fillStyle = ctx.strokeStyle
+        ctx.lineWidth = 4
+        ctx.beginPath(); ctx.arc(0, 0, 58, 0, Math.PI * 2); ctx.stroke()
+        ctx.lineWidth = 1.5
+        ctx.beginPath(); ctx.arc(0, 0, 48, 0, Math.PI * 2); ctx.stroke()
+        ctx.font = 'bold 64px serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(g.gameRank, 0, 24)
+        ctx.restore()
+        ctx.textAlign = 'center'
       }
 
       ctx.strokeStyle = 'rgba(201,168,106,.6)'

@@ -34,6 +34,9 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ============ 剧照场景 ============ */
 .scene { position: absolute; inset: 0; }
+/* 视差外层：鼠标微视差；内层 scene-still 做 Ken Burns，transform 互不打架 */
+.parallax-wrap { position: absolute; inset: 0; will-change: transform;
+  transition: transform .55s cubic-bezier(.2,.6,.3,1); }
 .scene-still {
   position: absolute; inset: -6%;
   background-size: cover; background-position: center;
@@ -49,6 +52,35 @@ button { font-family: inherit; cursor: pointer; }
 
 .scene-fade { animation: sceneIn 1.6s ease both; }
 @keyframes sceneIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* 节点切换光扫：一束斜光划过画面 */
+.light-sweep { position: absolute; inset: 0; z-index: 14; pointer-events: none; overflow: hidden; }
+.light-sweep::before { content: ''; position: absolute; top: -50%; bottom: -50%; width: 36%;
+  left: -60%; transform: rotate(12deg); filter: blur(14px);
+  background: linear-gradient(90deg, transparent, rgba(255,240,205,.13) 35%, rgba(255,255,255,.22) 50%, rgba(255,240,205,.13) 65%, transparent);
+  animation: sweepAcross 1.1s cubic-bezier(.5,.1,.4,1) .15s both; }
+@keyframes sweepAcross { from { left: -60%; opacity: 0; } 15% { opacity: 1; }
+  85% { opacity: 1; } to { left: 130%; opacity: 0; } }
+
+/* 金色浮尘 */
+.dust-field { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
+.dust { position: absolute; bottom: -12px; border-radius: 50%;
+  background: radial-gradient(circle, #f0dfae, #c9a86a88);
+  box-shadow: 0 0 6px rgba(232,207,150,.8); opacity: 0;
+  animation-name: dustFloat; animation-timing-function: linear; animation-iteration-count: infinite; }
+@keyframes dustFloat {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  8% { opacity: .55; }
+  85% { opacity: .12; }
+  100% { transform: translateY(-88vh) translateX(var(--drift, 0px)); opacity: 0; }
+}
+
+/* 标题卡光痕：一条金线扫过大字后方 */
+.title-streak { position: absolute; left: 0; right: 0; top: 50%; height: 1px; z-index: 0;
+  background: linear-gradient(90deg, transparent, rgba(216,184,120,.0) 20%, rgba(232,207,150,.9) 50%, transparent 80%);
+  filter: blur(0.4px) drop-shadow(0 0 12px rgba(216,184,120,.6));
+  transform: translateX(-100%); animation: streakPass 1.8s cubic-bezier(.6,0,.2,1) .4s both; }
+@keyframes streakPass { to { transform: translateX(100%); } }
 
 /* 场景角标（年龄·地点） */
 .scene-tag {

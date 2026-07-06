@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useGame } from '../store'
 import { todayHall } from '../lib/hall'
+import Dust from './Dust'
 import { sfx, startBgm } from '../lib/audio'
 
 export default function AttractMode() {
@@ -21,6 +22,7 @@ export default function AttractMode() {
 
   return (
     <div className="attract">
+      <Dust count={20} />
       <div className="kicker">INTERACTIVE FILM · 互动影游</div>
       <div className="logo">镜像自我</div>
       <div className="sub">人 生 预 演</div>

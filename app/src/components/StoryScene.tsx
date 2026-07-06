@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../store'
 import { NODES, CHAPTER_FLOW, Choice, Career, dominantCareer, isDrifter, CAREER_INFO } from '../story'
 import { useStill } from './useStill'
+import ParallaxStill from './ParallaxStill'
 import { sfx } from '../lib/audio'
 
 type Beat = 'lines' | 'choices' | 'doors' | 'consequence'
@@ -178,10 +179,8 @@ export default function StoryScene() {
 
   return (
     <div className="scene scene-fade" onClick={advanceLine} data-testid={`node-${node.id}`}>
-      <div
-        className={`scene-still ${beat === 'consequence' ? 'consequence' : ''}`}
-        style={{ backgroundImage: `url(${still})` }}
-      />
+      <ParallaxStill url={still} dim={beat === 'consequence'} />
+      <div key={node.id} className="light-sweep" aria-hidden />
       <div className="scene-tag">{node.age} · {node.place}</div>
 
       {beat === 'lines' && (
