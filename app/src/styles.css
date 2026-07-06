@@ -311,6 +311,14 @@ button { font-family: inherit; cursor: pointer; }
 .report-flow { width: min(34vw, 560px); }
 .report-flow svg { width: 100%; height: auto; display: block; }
 
+/* 分享卡预览浮层 */
+.share-overlay { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2.4vh; background: rgba(0,0,0,.86);
+  backdrop-filter: blur(8px); cursor: pointer; animation: sceneIn .35s ease both; }
+.share-overlay img { max-height: 78vh; max-width: 86vw; border: 1px solid rgba(201,168,106,.45);
+  box-shadow: 0 24px 80px rgba(0,0,0,.7), 0 0 60px rgba(216,184,120,.12); }
+.share-tip { font-size: 12px; letter-spacing: .35em; color: #cbbf9f; }
+
 /* ============ 通用 ============ */
 .fade-in { animation: sceneIn 1s ease both; }
 .top-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 65; display: flex;

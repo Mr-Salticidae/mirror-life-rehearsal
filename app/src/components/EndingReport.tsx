@@ -17,6 +17,9 @@ export default function EndingReport() {
   const palette = info ? info.palette : DRIFTER_INFO.palette
   const endStill = useStill(endStillId, palette, `结局·${info?.name ?? DRIFTER_INFO.name}`)
   const [report, setReport] = useState<Report | null>(null)
+  const [cardUrl, setCardUrl] = useState<string | null>(null) // 预合成的分享卡 blob URL
+  const [showCard, setShowCard] = useState(false)
+  const [saved, setSaved] = useState(false)
   const requested = useRef(false)
 
   const title = useMemo(
@@ -40,10 +43,8 @@ export default function EndingReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 分享卡导出：1080x1440 竖版
-  const exportCard = () => {
-    if (!report) return
-    sfx.click()
+  // 分享卡预合成：报告就绪即离屏渲染成 blob，点击时才能同步触发下载（保住用户激活态）
+  const composeCard = (rep: Report): Promise<string> => new Promise(resolve => {
     const W = 1080, H = 1440
     const cv = document.createElement('canvas')
     cv.width = W; cv.height = H
@@ -76,19 +77,17 @@ export default function EndingReport() {
 
       ctx.fillStyle = '#d8d2c4'
       ctx.font = '30px serif'
-      wrapText(ctx, report.paragraphs[2] ?? '', W / 2, 560, W * 0.74, 52)
+      wrapText(ctx, rep.paragraphs[2] ?? '', W / 2, 560, W * 0.74, 52)
       ctx.fillStyle = '#ece0c4'
       ctx.font = 'italic 34px serif'
-      wrapText(ctx, `—— ${report.finalWord}`, W / 2, 1130, W * 0.7, 56)
+      wrapText(ctx, `—— ${rep.finalWord}`, W / 2, 1130, W * 0.7, 56)
 
       ctx.fillStyle = 'rgba(255,255,255,.4)'
       ctx.font = '22px sans-serif'
       ctx.fillText('POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD', W / 2, H - 70)
 
-      const a = document.createElement('a')
-      a.download = `人生预演_${displayName}_${title}.jpg`
-      a.href = cv.toDataURL('image/jpeg', 0.9)
-      a.click()
+      // blob URL 而非巨型 data URL：data URL 下载在部分环境会被静默拦截
+      cv.toBlob(b => resolve(URL.createObjectURL(b!)), 'image/jpeg', 0.9)
     }
 
     const src = career === 'painter' && g.graffitiData ? g.graffitiData : endStill
@@ -100,6 +99,31 @@ export default function EndingReport() {
     }
     img.onerror = () => { ctx.fillStyle = '#0a0e18'; ctx.fillRect(0, 0, W, H); finish() }
     img.src = src
+  })
+
+  // 报告就绪 → 预合成分享卡
+  useEffect(() => {
+    if (!report) return
+    let alive = true
+    composeCard(report).then(url => { if (alive) setCardUrl(url); else URL.revokeObjectURL(url) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report])
+  useEffect(() => () => { if (cardUrl) URL.revokeObjectURL(cardUrl) }, [cardUrl])
+
+  // 点击：同步触发下载（anchor 挂进 DOM）+ 弹出预览浮层兜底
+  const exportCard = () => {
+    if (!cardUrl) return
+    sfx.click()
+    const a = document.createElement('a')
+    a.download = `人生预演_${displayName}_${title}.jpg`
+    a.href = cardUrl
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setShowCard(true)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
   }
 
   const bg = career === 'painter' && g.graffitiData ? g.graffitiData : endStill
@@ -129,12 +153,21 @@ export default function EndingReport() {
         <FlowChart mode="final" />
         <Radar />
         <div className="report-actions">
-          <button className="primary" onClick={exportCard} disabled={!report}>保存分享卡</button>
+          <button className="primary" data-testid="save-card" onClick={exportCard} disabled={!cardUrl}>
+            {saved ? '已保存 ✓' : cardUrl ? '保存分享卡' : '生成中…'}
+          </button>
           <button data-testid="restart" onClick={() => { sfx.whoosh(); useGame.getState().toAttract() }}>
             重新预演
           </button>
         </div>
       </div>
+
+      {showCard && cardUrl && (
+        <div className="share-overlay" data-testid="share-overlay" onClick={() => setShowCard(false)}>
+          <img src={cardUrl} alt="人生预演分享卡" />
+          <div className="share-tip">已开始下载 · 也可右键图片另存 · 点击任意处关闭</div>
+        </div>
+      )}
     </div>
   )
 }
