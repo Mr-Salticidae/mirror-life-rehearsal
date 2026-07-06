@@ -105,8 +105,9 @@ export default function RhythmBeat() {
     }
 
     const judge = (lane: number) => {
-      if (!st.startAt || ended.current) return
-      begin()
+      if (ended.current) return
+      // 首次按键/点轨道 = 开始（谱面从 2.4s 起，此刻不会有可判音符，只做启动不算失误）
+      if (!st.startAt) { begin(); st.flash[lane] = 1; return }
       const now = performance.now() - st.startAt
       st.flash[lane] = 1
       let best: Note | null = null

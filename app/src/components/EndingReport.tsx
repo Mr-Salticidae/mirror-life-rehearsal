@@ -57,6 +57,7 @@ export default function EndingReport() {
     return order
       .filter(([, c]) => c !== ending)
       .map(([st, c]) => ({ c, score: g.stats[st] / Math.sqrt(MAX_REACH[st]) }))
+      .filter(a => a.score > 0) // 0 分维度不算"差点走上的路"（运维直达时全 0，整节隐藏）
       .sort((a, b) => b.score - a.score)
       .slice(0, 2)
       .map(({ c }) => ({ name: CAREER_INFO[c].name, slogan: CAREER_INFO[c].slogan }))

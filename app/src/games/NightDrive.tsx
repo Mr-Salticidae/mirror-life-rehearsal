@@ -197,7 +197,7 @@ export default function NightDrive() {
       const dz = state.speed * dt
       for (const d of dashes) { d.position.z += dz; if (d.position.z > 6) d.position.z -= 360 }
       for (const p of poles) { p.position.z += dz; if (p.position.z > 10) p.position.z -= 16 * 24 }
-      for (const t of traffic) {
+      for (const t of [...traffic]) { // 快照遍历：splice 原数组不会跳过下一辆
         t.grp.position.z += (state.speed - t.speed) * dt
         if (t.grp.position.z > 10) {
           scene.remove(t.grp)

@@ -38,9 +38,13 @@ export default function StoryScene() {
     return [...node.lines, ...matched.map(m => m.text)]
   }, [nodeId])
 
+  // 节点已定案（选过/超时）后拒绝二次输入：防快速双击重复加成、防长按满格与超时同帧双触发
+  const settled = useRef(false)
+
   useEffect(() => {
     setBeat('lines'); setLineIdx(0); setTyped(0)
     setConsequence(''); setTimeLeft(node.timer ?? 0); setHoldPct(0)
+    settled.current = false
   }, [nodeId])
 
   // 打字机
@@ -103,13 +107,16 @@ export default function StoryScene() {
   }
 
   const onTimeout = () => {
-    if (!node.onTimeout) return
+    if (!node.onTimeout || settled.current) return
+    settled.current = true
     sfx.wrong()
     g().recordTimeout(node.id, node.onTimeout.regret)
     showConsequence(node.onTimeout.consequence)
   }
 
   const pick = (c: Choice) => {
+    if (settled.current) return
+    settled.current = true
     sfx.confirm()
     if (node.id === 'E') {
       g().applyChoice({ nodeId: 'E', choiceId: c.id, choiceText: c.text })
@@ -239,7 +246,7 @@ export default function StoryScene() {
 
       {beat === 'doors' && (
         <>
-          <div className="choice-prompt">三扇门重新亮起。走进——</div>
+          <div className="choice-prompt">五扇门重新亮起。走进——</div>
           <div className="choice-zone">
             {(Object.keys(CAREER_INFO) as Career[]).map(k => (
               <button

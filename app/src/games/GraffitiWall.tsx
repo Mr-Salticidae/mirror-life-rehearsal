@@ -24,6 +24,7 @@ export default function GraffitiWall() {
   const doneRef = useRef(false)
   const colorRef = useRef(color); colorRef.current = color
   const sizeRef = useRef(size); sizeRef.current = size
+  const strokesRef = useRef(strokes); strokesRef.current = strokes // 倒计时超时结算走旧闭包，用 ref 取实时笔数
 
   // 背景墙面
   useEffect(() => {
@@ -156,7 +157,7 @@ export default function GraffitiWall() {
     setOver({ rank, cov })
     sfx.confirm()
     setTimeout(() => finishGame(cov,
-      `占领了这面墙的 ${cov}%，一共 ${strokes} 笔`, rank), 3000)
+      `占领了这面墙的 ${cov}%，一共 ${strokesRef.current} 笔`, rank), 3000)
   }
 
   return (

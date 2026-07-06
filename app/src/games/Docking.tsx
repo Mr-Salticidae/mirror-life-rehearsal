@@ -97,9 +97,19 @@ export default function Docking() {
     const st = { dist: 120, vel: 8, fuel: 100, hold: 0, corrections: 0, collisions: 0, docked: false, wobble: 0 }
     const keys = { retro: false, accel: false, brake: false }
     const onDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') keys.retro = true
-      if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') keys.accel = true
-      if (e.key === ' ') { keys.brake = true; e.preventDefault() }
+      // 修正计数 = 推进键按下沿（长按不重复计）
+      if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
+        if (!keys.retro && !ended.current) st.corrections++
+        keys.retro = true
+      }
+      if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
+        if (!keys.accel && !ended.current) st.corrections++
+        keys.accel = true
+      }
+      if (e.key === ' ') {
+        if (!keys.brake && !ended.current) st.corrections++
+        keys.brake = true; e.preventDefault()
+      }
     }
     const onUp = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') keys.retro = false
@@ -143,13 +153,11 @@ export default function Docking() {
           if (keys.accel) { st.vel += 3.2 * dt; st.fuel -= 7 * dt; burning = true }
           if (keys.brake) { st.vel += -Math.sign(st.vel) * Math.min(Math.abs(st.vel), 6.5 * dt); st.fuel -= 15 * dt; burning = true }
           if (burning) {
-            st.corrections += dt > 0 ? 0 : 0
             thrustSfxAcc += dt
             if (thrustSfxAcc > 0.28) { thrustSfxAcc = 0; sfx.whoosh() }
           }
         }
         st.fuel = Math.max(0, st.fuel)
-        // 修正计数：每次推进键按下沿
         st.dist -= st.vel * dt
         // 碰撞
         if (st.dist < 0) {

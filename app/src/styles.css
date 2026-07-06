@@ -112,6 +112,8 @@ button { font-family: inherit; cursor: pointer; }
 .choice-zone {
   position: absolute; left: 0; right: 0; bottom: 10vh; z-index: 25;
   display: flex; justify-content: center; align-items: flex-end; gap: 2.2vw; padding: 0 6vw;
+  /* E2 五扇门等多卡场景：放不下时换行成两排，而不是挤出屏幕 */
+  flex-wrap: wrap; row-gap: 2vh;
 }
 .choice-prompt {
   position: absolute; bottom: 34vh; left: 0; right: 0; text-align: center;
