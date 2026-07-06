@@ -60,6 +60,30 @@ light particles drifting out of the mirror frame, mysterious and sacred
 atmosphere, symmetrical composition
 ```
 
+### node_f —— 七岁·储蓄罐（迭代一新增，暖调静物+背影）
+```
+a 7-year-old child seen from behind sitting on a bed counting coins poured from
+a ceramic piggy bank onto the blanket, warm bedside lamp glow, coins catching
+golden light, small shadow on the wall, cozy 1990s Chinese bedroom, intimate
+and hopeful atmosphere, shallow depth of field
+```
+
+### node_g —— 十七岁·走廊约谈（迭代一新增，冷灰对峙）
+```
+a Chinese high school hallway after class, a teenager seen from behind facing
+a middle-aged teacher holding a folded exam report, late afternoon grey-blue
+light through tall windows, long empty corridor perspective, tense but quiet,
+muted institutional palette with one warm window at the far end
+```
+
+### node_h —— 二十二岁·出租屋（迭代一新增，第一份工资）
+```
+a small rented room at night, a young adult seen from behind sitting at a desk
+lit by a single warm lamp, phone screen glowing with a bank notification,
+instant noodle cup and keys on the desk, city lights blurred outside the small
+window, modest but dignified, warm amber against cool night blue
+```
+
 ## 职业线（6 张）
 
 ### career_soldier —— 军人前奏（风雪哨所）
