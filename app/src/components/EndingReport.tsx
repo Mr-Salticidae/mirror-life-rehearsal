@@ -197,6 +197,7 @@ export default function EndingReport() {
     <div className="report" data-testid="report">
       <div className="scene-still" style={{
         backgroundImage: `url(${bg})`, opacity: 0.28, filter: 'saturate(.8)',
+        pointerEvents: 'none', // 装饰背景，双保险：即使层叠再变也不拦点击
       }} />
       <div className="report-card">
         <div className="ai-tag">{report ? (report.fromAI ? 'RTX LOCAL AI' : 'OFFLINE MODE') : 'RTX LOCAL AI'}</div>
