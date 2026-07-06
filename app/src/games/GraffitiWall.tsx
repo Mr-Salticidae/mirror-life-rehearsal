@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { useGame } from '../store'
+import { useGame, Rank } from '../store'
+import { rankOf } from '../lib/titles'
+import RankSplash from '../components/RankSplash'
 import { placeholderStill, stillUrl } from '../lib/placeholder'
 import { sfx } from '../lib/audio'
 
@@ -18,6 +20,7 @@ export default function GraffitiWall() {
   const [size, setSize] = useState(1)
   const [timeLeft, setTimeLeft] = useState(DURATION)
   const [strokes, setStrokes] = useState(0)
+  const [over, setOver] = useState<{ rank: Rank; cov: number } | null>(null)
   const doneRef = useRef(false)
   const colorRef = useRef(color); colorRef.current = color
   const sizeRef = useRef(size); sizeRef.current = size
@@ -98,6 +101,7 @@ export default function GraffitiWall() {
 
     const pos = (e: PointerEvent) => ({ x: e.clientX, y: e.clientY })
     const down = (e: PointerEvent) => {
+      if (doneRef.current) return
       const el = e.target as HTMLElement | null
       if (el?.closest?.('.graffiti-tools')) return
       painting = true
@@ -133,6 +137,13 @@ export default function GraffitiWall() {
   const done = () => {
     if (doneRef.current) return
     doneRef.current = true
+    // 覆盖率：采样喷漆层 alpha
+    const pcv = paintRef.current!
+    const pctx = pcv.getContext('2d')!
+    const data = pctx.getImageData(0, 0, pcv.width, pcv.height).data
+    let painted = 0, total = 0
+    for (let i = 3; i < data.length; i += 4 * 16) { total++; if (data[i] > 24) painted++ }
+    const cov = Math.round((painted / Math.max(1, total)) * 100)
     // 合成：墙 + 画作 → 分享/结局用
     const out = document.createElement('canvas')
     out.width = innerWidth; out.height = innerHeight
@@ -140,14 +151,21 @@ export default function GraffitiWall() {
     ctx.drawImage(wallRef.current!, 0, 0)
     ctx.drawImage(paintRef.current!, 0, 0)
     setGraffiti(out.toDataURL('image/jpeg', 0.85))
+    // 亮灯演出 + 评级
+    const rank = rankOf('graffiti', cov)
+    setOver({ rank, cov })
     sfx.confirm()
-    finishGame(strokes * 10, `完成了一幅 ${strokes} 笔的墙上作品`)
+    setTimeout(() => finishGame(cov,
+      `占领了这面墙的 ${cov}%，一共 ${strokes} 笔`, rank), 3000)
   }
 
   return (
     <div style={{ position: 'absolute', inset: 0, cursor: 'crosshair' }}>
-      <canvas ref={wallRef} style={{ position: 'absolute', inset: 0 }} />
-      <canvas ref={paintRef} style={{ position: 'absolute', inset: 0 }} />
+      {/* 完成时"城市亮灯"：墙面整体提亮 */}
+      <canvas ref={wallRef} style={{ position: 'absolute', inset: 0,
+        filter: over ? 'brightness(1.5) saturate(1.15)' : undefined, transition: 'filter 1.4s ease' }} />
+      <canvas ref={paintRef} style={{ position: 'absolute', inset: 0,
+        filter: over ? 'brightness(1.25)' : undefined, transition: 'filter 1.4s ease' }} />
       <div className="game-hud">
         <span>一 面 墙</span>
         <span>剩余 <b>{timeLeft}s</b></span>
@@ -167,6 +185,7 @@ export default function GraffitiWall() {
         </div>
         <button className="done-btn" data-testid="graffiti-done" onClick={done}>完 成</button>
       </div>
+      {over && <RankSplash rank={over.rank} title="天 亮 了" sub={`这面墙的 ${over.cov}% 属于你`} />}
     </div>
   )
 }

@@ -1,9 +1,9 @@
 import { create } from 'zustand'
-import { Career, Stat, dominantCareer } from './story'
+import { Career, Ending, Stat, dominantCareer } from './story'
 
 export type Phase =
   | 'attract'      // 待机吸引模式
-  | 'prologue'     // 序幕：点亮镜子
+  | 'prologue'     // 序幕：擦亮镜子
   | 'chapter'      // 章节标题卡
   | 'story'        // 抉择节点
   | 'flowchart'    // 章间分支图
@@ -11,20 +11,24 @@ export type Phase =
   | 'game'         // 迷你游戏
   | 'report'       // 终幕报告
 
+export type Rank = 'S' | 'A' | 'B'
+
 export interface PathStep { nodeId: string; choiceId: string; choiceText: string }
 
 interface GameState {
   phase: Phase
   nodeId: string
-  chapterIndex: number       // 0..2，进入哪一章
+  chapterIndex: number
   stats: Record<Stat, number>
   path: PathStep[]
   regret: boolean
-  career: Career | null
+  timeouts: number           // 超时犹豫次数（无名者触发条件之一）
+  ending: Ending | null      // 职业 或 'drifter'
   overridden: boolean        // E 节点换过门
   gameScore: number
-  gameDetail: string         // 游戏结算描述，供报告
-  graffitiData: string | null // 涂鸦作品 dataURL，合成进结局
+  gameRank: Rank | null
+  gameDetail: string
+  graffitiData: string | null
 
   start(): void
   toAttract(): void
@@ -32,8 +36,9 @@ interface GameState {
   enterChapter(i: number): void
   enterNode(id: string): void
   applyChoice(step: PathStep, effect?: Partial<Record<Stat, number>>, boostDominant?: number, regret?: boolean): void
-  chooseCareer(c: Career, overridden: boolean): void
-  finishGame(score: number, detail: string): void
+  recordTimeout(nodeId: string, regret?: boolean): void
+  chooseEnding(e: Ending, overridden: boolean): void
+  finishGame(score: number, detail: string, rank: Rank): void
   setGraffiti(d: string): void
 }
 
@@ -46,16 +51,18 @@ export const useGame = create<GameState>((set, get) => ({
   stats: initialStats(),
   path: [],
   regret: false,
-  career: null,
+  timeouts: 0,
+  ending: null,
   overridden: false,
   gameScore: 0,
+  gameRank: null,
   gameDetail: '',
   graffitiData: null,
 
   start: () => set({
     phase: 'prologue', nodeId: 'A', chapterIndex: 0,
-    stats: initialStats(), path: [], regret: false, career: null,
-    overridden: false, gameScore: 0, gameDetail: '', graffitiData: null,
+    stats: initialStats(), path: [], regret: false, timeouts: 0, ending: null,
+    overridden: false, gameScore: 0, gameRank: null, gameDetail: '', graffitiData: null,
   }),
   toAttract: () => set({ phase: 'attract' }),
   setPhase: (p) => set({ phase: p }),
@@ -75,7 +82,16 @@ export const useGame = create<GameState>((set, get) => ({
       regret: get().regret || !!regret,
     })
   },
-  chooseCareer: (c, overridden) => set({ career: c, overridden }),
-  finishGame: (score, detail) => set({ gameScore: score, gameDetail: detail, phase: 'report' }),
+  recordTimeout: (nodeId, regret) => set({
+    timeouts: get().timeouts + 1,
+    path: [...get().path, { nodeId, choiceId: 'timeout', choiceText: '……（犹豫）' }],
+    regret: get().regret || !!regret,
+  }),
+  chooseEnding: (e, overridden) => set({ ending: e, overridden }),
+  finishGame: (score, detail, rank) => set({ gameScore: score, gameDetail: detail, gameRank: rank, phase: 'report' }),
   setGraffiti: (d) => set({ graffitiData: d }),
 }))
+
+export function careerOf(e: Ending | null): Career | null {
+  return e && e !== 'drifter' ? e : null
+}

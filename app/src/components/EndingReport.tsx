@@ -1,27 +1,42 @@
-import { useEffect, useRef, useState } from 'react'
-import { useGame } from '../store'
-import { CAREER_INFO } from '../story'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useGame, careerOf } from '../store'
+import { CAREER_INFO, DRIFTER_INFO } from '../story'
 import { generateReport, Report } from '../lib/ai'
+import { computeTitle } from '../lib/titles'
+import { pushHall } from '../lib/hall'
 import FlowChart from './FlowChart'
 import { useStill } from './useStill'
 import { sfx } from '../lib/audio'
 
 export default function EndingReport() {
   const g = useGame()
-  const career = g.career!
-  const info = CAREER_INFO[career]
-  const endStill = useStill(info.endStill, info.palette, `结局·${info.name}`)
+  const ending = g.ending!
+  const career = careerOf(ending)
+  const info = career ? CAREER_INFO[career] : null
+  const endStillId = info ? info.endStill : DRIFTER_INFO.endStill
+  const palette = info ? info.palette : DRIFTER_INFO.palette
+  const endStill = useStill(endStillId, palette, `结局·${info?.name ?? DRIFTER_INFO.name}`)
   const [report, setReport] = useState<Report | null>(null)
   const requested = useRef(false)
+
+  const title = useMemo(
+    () => computeTitle(ending, g.gameRank, { regret: g.regret, overridden: g.overridden }),
+    [ending, g.gameRank, g.regret, g.overridden],
+  )
+  const displayName = info?.name ?? DRIFTER_INFO.name
 
   useEffect(() => {
     if (requested.current) return
     requested.current = true
     sfx.confirm()
     generateReport({
-      career, overridden: g.overridden, regret: g.regret,
+      ending, overridden: g.overridden, regret: g.regret, timeouts: g.timeouts,
       path: g.path, gameScore: g.gameScore, gameDetail: g.gameDetail,
-    }).then(setReport)
+    }).then(r => {
+      setReport(r)
+      // 上人生墙（展位排队预告位）
+      pushHall({ title, career: displayName, rank: g.gameRank ?? '—', score: g.gameScore })
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -35,7 +50,6 @@ export default function EndingReport() {
     const ctx = cv.getContext('2d')!
 
     const finish = () => {
-      // 暗角 + 文案
       const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, H * 0.85)
       vg.addColorStop(0, 'transparent'); vg.addColorStop(1, 'rgba(0,0,0,.78)')
       ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H)
@@ -47,19 +61,22 @@ export default function EndingReport() {
       ctx.fillText('镜 像 自 我 · 人 生 预 演', W / 2, 130)
       ctx.fillStyle = '#f4efe4'
       ctx.font = 'bold 92px serif'
-      ctx.fillText(info.name, W / 2, 300)
+      ctx.fillText(displayName, W / 2, 300)
       ctx.fillStyle = '#d8b878'
       ctx.font = '40px serif'
-      ctx.fillText(`「${report.honor}」`, W / 2, 390)
+      ctx.fillText(`「${title}」`, W / 2, 390)
+      if (g.gameRank) {
+        ctx.fillStyle = '#ffd86a'
+        ctx.font = 'bold 34px serif'
+        ctx.fillText(`RANK ${g.gameRank}`, W / 2, 448)
+      }
 
-      // 分隔线
       ctx.strokeStyle = 'rgba(201,168,106,.6)'
-      ctx.beginPath(); ctx.moveTo(W * 0.3, 450); ctx.lineTo(W * 0.7, 450); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(W * 0.3, 480); ctx.lineTo(W * 0.7, 480); ctx.stroke()
 
-      // 叙事摘录（第一段 + finalWord）
       ctx.fillStyle = '#d8d2c4'
       ctx.font = '30px serif'
-      wrapText(ctx, report.paragraphs[2] ?? '', W / 2, 540, W * 0.74, 52)
+      wrapText(ctx, report.paragraphs[2] ?? '', W / 2, 560, W * 0.74, 52)
       ctx.fillStyle = '#ece0c4'
       ctx.font = 'italic 34px serif'
       wrapText(ctx, `—— ${report.finalWord}`, W / 2, 1130, W * 0.7, 56)
@@ -69,12 +86,11 @@ export default function EndingReport() {
       ctx.fillText('POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD', W / 2, H - 70)
 
       const a = document.createElement('a')
-      a.download = `人生预演_${info.name}_${report.honor}.jpg`
+      a.download = `人生预演_${displayName}_${title}.jpg`
       a.href = cv.toDataURL('image/jpeg', 0.9)
       a.click()
     }
 
-    // 底图：画家用涂鸦作品，其他用结局剧照
     const src = career === 'painter' && g.graffitiData ? g.graffitiData : endStill
     const img = new Image()
     img.onload = () => {
@@ -96,10 +112,12 @@ export default function EndingReport() {
       <div className="report-card">
         <div className="ai-tag">{report ? (report.fromAI ? 'RTX LOCAL AI' : 'OFFLINE MODE') : 'RTX LOCAL AI'}</div>
         <div className="rk">人生预演报告 · LIFE REHEARSAL REPORT</div>
-        <h2>{info.name}的一生</h2>
+        <h2>{displayName}的一生</h2>
         {report ? (
           <>
-            <div className="honor">「{report.honor}」{g.overridden && ' · 换过一扇门'}{g.regret && ' · 带着一次遗憾'}</div>
+            <div className="honor" data-testid="honor">
+              「{title}」{g.gameRank && <> · RANK {g.gameRank}</>}
+            </div>
             {report.paragraphs.map((p, i) => <p key={i}>{p}</p>)}
             <p className="final-word">{report.finalWord}</p>
           </>
@@ -109,6 +127,7 @@ export default function EndingReport() {
       </div>
       <div className="report-side">
         <FlowChart mode="final" />
+        <Radar />
         <div className="report-actions">
           <button className="primary" onClick={exportCard} disabled={!report}>保存分享卡</button>
           <button data-testid="restart" onClick={() => { sfx.whoosh(); useGame.getState().toAttract() }}>
@@ -116,6 +135,47 @@ export default function EndingReport() {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// 四维人格雷达：勇 / 彩 / 驰 / 定（坚定 = 顶住类选择的次数）
+function Radar() {
+  const g = useGame()
+  const firm = g.path.filter(p => ['D1', 'G1', 'E1'].includes(p.choiceId)).length
+  const dims = [
+    { label: '勇', v: g.stats.brave },
+    { label: '彩', v: g.stats.color },
+    { label: '驰', v: g.stats.speed },
+    { label: '定', v: firm * 1.6 },
+  ]
+  const max = Math.max(4, ...dims.map(d => d.v))
+  const C = 100, R = 74
+  const pt = (i: number, r: number) => {
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / dims.length
+    return `${C + Math.cos(a) * r},${C + Math.sin(a) * r}`
+  }
+  const poly = dims.map((d, i) => pt(i, (Math.max(0.5, d.v) / max) * R)).join(' ')
+  return (
+    <div className="radar" data-testid="radar">
+      <svg viewBox="0 0 200 200">
+        {[0.33, 0.66, 1].map(k => (
+          <polygon key={k} points={dims.map((_, i) => pt(i, R * k)).join(' ')}
+                   fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="1" />
+        ))}
+        {dims.map((_, i) => (
+          <line key={i} x1={C} y1={C}
+                x2={pt(i, R).split(',')[0]} y2={pt(i, R).split(',')[1]}
+                stroke="rgba(255,255,255,.08)" strokeWidth="1" />
+        ))}
+        <polygon points={poly} fill="rgba(216,184,120,.22)" stroke="#d8b878" strokeWidth="1.6" />
+        {dims.map((d, i) => {
+          const [x, y] = pt(i, R + 15).split(',').map(Number)
+          return <text key={d.label} x={x} y={y + 4} textAnchor="middle" fontSize="13"
+                       fill="#cfc4a8" letterSpacing="2">{d.label}</text>
+        })}
+      </svg>
+      <div className="cap">人 格 倾 向</div>
     </div>
   )
 }

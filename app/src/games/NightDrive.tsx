@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { useGame } from '../store'
+import { useGame, Rank } from '../store'
+import { rankOf } from '../lib/titles'
+import RankSplash from '../components/RankSplash'
 import { sfx } from '../lib/audio'
 
 // 赛车手《夜环线》：雨夜三车道，←→/AD 变道躲车流，蓝色氮气加速，60s 距离计分
@@ -13,7 +15,7 @@ export default function NightDrive() {
   const [dist, setDist] = useState(0)
   const [timeLeft, setTimeLeft] = useState(DURATION)
   const [speedKmh, setSpeedKmh] = useState(0)
-  const [over, setOver] = useState(false)
+  const [over, setOver] = useState<Rank | null>(null)
 
   useEffect(() => {
     const mount = mountRef.current!
@@ -22,7 +24,7 @@ export default function NightDrive() {
       renderer = new THREE.WebGLRenderer({ antialias: true })
     } catch {
       // WebGL 不可用：跳过游戏直达报告，主流程不断
-      finishGame(0, '完成了一段夜路')
+      finishGame(0, '完成了一段夜路', 'B')
       return
     }
     renderer.setSize(innerWidth, innerHeight)
@@ -159,10 +161,13 @@ export default function NightDrive() {
     const loop = () => {
       raf = requestAnimationFrame(loop)
       const now = performance.now()
-      const dt = Math.min(0.05, (now - t0 - (last - t0)) / 1000); last = now
+      const realDt = Math.min(0.05, (now - last) / 1000); last = now
       const elapsed = (now - t0) / 1000
       const left = Math.max(0, DURATION - elapsed)
       setTimeLeft(Math.ceil(left))
+      // 终点冲刺慢镜：最后 2.2 秒世界放慢，镜头贴近
+      const slowmo = left > 0 && left <= 2.2
+      const dt = slowmo ? realDt * 0.35 : realDt
 
       // 速度：基础提速 + 氮气
       const base = 26 + elapsed * 0.5
@@ -179,12 +184,13 @@ export default function NightDrive() {
       car.rotation.z = (tx - car.position.x) * -0.06
       car.rotation.y = (tx - car.position.x) * -0.04
 
-      // 相机跟随 + 震动
+      // 相机跟随 + 震动（慢镜时拉低贴近，电影感）
       state.shake = Math.max(0, state.shake - dt * 3)
       const shx = (Math.random() - 0.5) * state.shake, shy = (Math.random() - 0.5) * state.shake
-      camera.position.set(car.position.x * 0.6 + shx, 3.1 + shy, 7.5)
+      const camY = slowmo ? 1.6 : 3.1, camZ = slowmo ? 5.6 : 7.5
+      camera.position.set(car.position.x * 0.6 + shx, camY + shy, camZ)
       camera.lookAt(car.position.x * 0.8, 1, -12)
-      camera.fov = 72 + (state.nitro > 0 ? 8 : 0) + (state.speed - 26) * 0.15
+      camera.fov = 72 + (state.nitro > 0 ? 8 : 0) + (state.speed - 26) * 0.15 - (slowmo ? 10 : 0)
       camera.updateProjectionMatrix()
 
       // 世界滚动
@@ -241,9 +247,12 @@ export default function NightDrive() {
 
       if (left <= 0 && !ended.current) {
         ended.current = true
-        setOver(true)
-        setTimeout(() => finishGame(Math.floor(state.dist),
-          `冲出 ${Math.floor(state.dist)} 米，氮气 ${state.nitroTaken} 次，碰撞 ${state.crashes} 次`), 2600)
+        const d = Math.floor(state.dist)
+        const rank = rankOf('race', d)
+        setOver(rank)
+        sfx.confirm()
+        setTimeout(() => finishGame(d,
+          `冲出 ${d} 米，氮气 ${state.nitroTaken} 次，碰撞 ${state.crashes} 次`, rank), 3000)
       }
       renderer.render(scene, camera)
     }
@@ -278,12 +287,7 @@ export default function NightDrive() {
         <span><b>{speedKmh}</b> km/h</span>
         <span>剩余 <b>{timeLeft}s</b></span>
       </div>
-      {over && (
-        <div className="game-overlay-msg">
-          <div className="big">冲 线</div>
-          <div className="game-hint">{dist} 米</div>
-        </div>
-      )}
+      {over && <RankSplash rank={over} title="冲 线" sub={`${dist} 米`} />}
     </div>
   )
 }

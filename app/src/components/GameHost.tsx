@@ -1,10 +1,10 @@
-import { useGame } from '../store'
+import { useGame, careerOf } from '../store'
 import FpsRange from '../games/FpsRange'
 import GraffitiWall from '../games/GraffitiWall'
 import NightDrive from '../games/NightDrive'
 
 export default function GameHost() {
-  const career = useGame(s => s.career)
+  const career = careerOf(useGame(s => s.ending))
   return (
     <div className="game-shell" data-testid="game-shell">
       {career === 'soldier' && <FpsRange />}

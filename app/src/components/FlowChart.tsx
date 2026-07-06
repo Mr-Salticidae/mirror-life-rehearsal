@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { useGame } from '../store'
-import { NODES, CHAPTER_FLOW, CAREER_INFO, Career } from '../story'
+import { NODES, CHAPTER_FLOW, CAREER_INFO, Career, DRIFTER_INFO } from '../story'
 import { sfx } from '../lib/audio'
 
 const GOLD = '#d8b878'
@@ -10,7 +10,7 @@ const DIM_TEXT = '#5a5f6e'
 // 底特律式分支图：走过的路径点亮，没走的灰显加锁
 export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
   const path = useGame(s => s.path)
-  const career = useGame(s => s.career)
+  const ending = useGame(s => s.ending)
   const g = useGame.getState
 
   const doneNodes = useMemo(() => new Set(path.map(p => p.nodeId)), [path])
@@ -18,7 +18,8 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
 
   // interlude 模式：展示后自动推进
   const proceed = () => {
-    if (career) { g().setPhase('career-intro'); return }
+    if (ending === 'drifter') { g().setPhase('report'); return } // 无名者没有职业可入，直达报告
+    if (ending) { g().setPhase('career-intro'); return }
     const nextCh = CHAPTER_FLOW.findIndex(c => !c.nodes.every(n => doneNodes.has(n)))
     g().enterChapter(nextCh === -1 ? CHAPTER_FLOW.length - 1 : nextCh)
   }
@@ -31,7 +32,7 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
   }, [])
 
   // 布局
-  const order = ['A', 'B', 'C', 'D', 'E']
+  const order = ['A', 'B', 'F', 'C', 'G', 'D', 'H', 'E']
   const visible = mode === 'final' ? order : order.filter(id => doneNodes.has(id))
   const W = 1200, H = 560, SPINE = H / 2
   const startX = 90, gapX = (W - 200) / Math.max(order.length - 1, 1)
@@ -108,25 +109,30 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
         )
       })}
 
-      {/* 终点：三种人生（E 完成后或 final 模式） */}
-      {(career || mode === 'final') && (
+      {/* 终点：三种人生 + 隐藏的无名者（常驻灰锁，勾人重玩） */}
+      {(ending || mode === 'final') && (
         <g>
-          {(Object.keys(CAREER_INFO) as Career[]).map((k, j) => {
-            const y = SPINE - 120 + j * 120
+          {([...(Object.keys(CAREER_INFO) as Career[]), 'drifter'] as const).map((k, j) => {
+            const y = SPINE - 165 + j * 110
             const x = W - 60
-            const on = career === k
+            const on = ending === k
+            const isDrift = k === 'drifter'
+            const label = isDrift ? (on ? DRIFTER_INFO.name : '？？？') : CAREER_INFO[k].name
             return (
-              <g key={k}>
+              <g key={k} opacity={isDrift && !on ? 0.6 : 1}>
                 <path d={`M ${nx(order.length - 1)} ${SPINE} C ${W - 150} ${SPINE}, ${W - 150} ${y}, ${x - 34} ${y}`}
                       fill="none" stroke={on ? GOLD : DIM} strokeWidth={on ? 2.5 : 1.2}
                       strokeDasharray={on ? 'none' : '4 5'} opacity={on ? 0.95 : 0.5} />
                 <rect x={x - 34} y={y - 16} width="68" height="32" rx="3"
                       fill={on ? 'rgba(216,184,120,.16)' : '#11141c'}
                       stroke={on ? GOLD : DIM} strokeWidth={on ? 1.5 : 1} />
-                <text x={x} y={y + 5} textAnchor="middle" fontSize="13"
+                <text x={isDrift && !on ? x + 5 : x} y={y + 5} textAnchor="middle" fontSize="13"
                       fill={on ? '#f0e0b8' : DIM_TEXT} letterSpacing="2">
-                  {CAREER_INFO[k].name}
+                  {label}
                 </text>
+                {isDrift && !on && (
+                  <text x={x - 22} y={y + 4.5} textAnchor="middle" fontSize="10" fill={DIM_TEXT}>🔒</text>
+                )}
               </g>
             )
           })}

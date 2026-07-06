@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../store'
-import { NODES, CHAPTER_FLOW, Choice, Career, dominantCareer, CAREER_INFO } from '../story'
+import { NODES, CHAPTER_FLOW, Choice, Career, dominantCareer, isDrifter, CAREER_INFO } from '../story'
 import { useStill } from './useStill'
 import { sfx } from '../lib/audio'
 
 type Beat = 'lines' | 'choices' | 'doors' | 'consequence'
+
+const CONSEQUENCE_MS = 2600
+const AUTO_ADVANCE_MS = 1700
 
 export default function StoryScene() {
   const nodeId = useGame(s => s.nodeId)
@@ -16,27 +19,51 @@ export default function StoryScene() {
   const [typed, setTyped] = useState(0)
   const [consequence, setConsequence] = useState('')
   const [timeLeft, setTimeLeft] = useState(node.timer ?? 0)
+  const [holdPct, setHoldPct] = useState(0) // 长按选择进度
 
-  // 节点切换时复位
+  // 回响台词：匹配早前选择后追加
+  const lines = useMemo(() => {
+    const g = useGame.getState()
+    const matched = (node.echoes ?? []).filter(e => {
+      if (e.when === 'regret') return g.regret
+      if (e.when.startsWith('timeout:')) {
+        const nid = e.when.slice(8)
+        return g.path.some(p => p.nodeId === nid && p.choiceId === 'timeout')
+      }
+      return g.path.some(p => p.choiceId === e.when)
+    })
+    return [...node.lines, ...matched.map(m => m.text)]
+  }, [nodeId])
+
   useEffect(() => {
     setBeat('lines'); setLineIdx(0); setTyped(0)
-    setConsequence(''); setTimeLeft(node.timer ?? 0)
+    setConsequence(''); setTimeLeft(node.timer ?? 0); setHoldPct(0)
   }, [nodeId])
 
   // 打字机
-  const line = node.lines[lineIdx] ?? ''
+  const line = lines[lineIdx] ?? ''
   useEffect(() => {
     if (beat !== 'lines') return
     if (typed >= line.length) return
-    const t = setTimeout(() => setTyped(v => v + 1), 65)
+    const t = setTimeout(() => setTyped(v => v + 1), 55)
     return () => clearTimeout(t)
   }, [typed, beat, lineIdx, line])
+
+  // 台词自动播：整行打完后停顿自动下一行（点击可跳）
+  useEffect(() => {
+    if (beat !== 'lines' || typed < line.length) return
+    const t = setTimeout(() => {
+      if (lineIdx < lines.length - 1) { setLineIdx(v => v + 1); setTyped(0) }
+      else setBeat('choices')
+    }, AUTO_ADVANCE_MS)
+    return () => clearTimeout(t)
+  }, [beat, typed, lineIdx, line, lines.length])
 
   const advanceLine = () => {
     if (beat !== 'lines') return
     sfx.click()
-    if (typed < line.length) { setTyped(line.length); return } // 先跳完本行
-    if (lineIdx < node.lines.length - 1) { setLineIdx(v => v + 1); setTyped(0) }
+    if (typed < line.length) { setTyped(line.length); return }
+    if (lineIdx < lines.length - 1) { setLineIdx(v => v + 1); setTyped(0) }
     else setBeat('choices')
   }
 
@@ -60,13 +87,8 @@ export default function StoryScene() {
   const g = useGame.getState
 
   const finishNode = () => {
-    // E 节点在 pick/door 里单独处理，这里只处理 A-D
     if (node.next) { g().enterNode(node.next); return }
-    // 章末
-    const chIdx = CHAPTER_FLOW.findIndex(c => c.nodes.includes(node.id))
     g().setPhase('flowchart')
-    // flowchart 组件负责推进到 enterChapter(chIdx+1) 或 career
-    void chIdx
   }
 
   const showConsequence = (text: string) => {
@@ -74,16 +96,13 @@ export default function StoryScene() {
     setConsequence(text)
     setBeat('consequence')
     sfx.whoosh()
-    setTimeout(finishNode, 3600)
+    setTimeout(finishNode, CONSEQUENCE_MS)
   }
 
   const onTimeout = () => {
     if (!node.onTimeout) return
     sfx.wrong()
-    g().applyChoice(
-      { nodeId: node.id, choiceId: 'timeout', choiceText: '……（犹豫）' },
-      undefined, undefined, node.onTimeout.regret,
-    )
+    g().recordTimeout(node.id, node.onTimeout.regret)
     showConsequence(node.onTimeout.consequence)
   }
 
@@ -92,10 +111,13 @@ export default function StoryScene() {
     if (node.id === 'E') {
       g().applyChoice({ nodeId: 'E', choiceId: c.id, choiceText: c.text })
       if (c.id === 'E1') {
-        g().chooseCareer(dominantCareer(g().stats), false)
+        const st = g()
+        // 无名者判定：犹豫太多或三值全平——镜子不给你任何一扇门
+        if (isDrifter(st.stats, st.timeouts)) g().chooseEnding('drifter', false)
+        else g().chooseEnding(dominantCareer(st.stats), false)
         g().setPhase('flowchart')
       } else {
-        setBeat('doors') // 换一扇门：显式三选
+        setBeat('doors')
       }
       return
     }
@@ -108,9 +130,34 @@ export default function StoryScene() {
 
   const pickDoor = (career: Career) => {
     sfx.confirm()
-    g().chooseCareer(career, true)
+    g().chooseEnding(career, true)
     g().setPhase('flowchart')
   }
+
+  // 长按选择（D1 推门）：按住 1.2s 确认，松手=退缩
+  const holdRef = useRef<{ raf: number; t0: number; choice: Choice | null }>({ raf: 0, t0: 0, choice: null })
+  const holdStart = (c: Choice) => {
+    sfx.click()
+    holdRef.current.t0 = performance.now()
+    holdRef.current.choice = c
+    const step = () => {
+      const pct = Math.min(1, (performance.now() - holdRef.current.t0) / 1200)
+      setHoldPct(pct)
+      if (pct >= 1) { holdEnd(true); return }
+      holdRef.current.raf = requestAnimationFrame(step)
+    }
+    holdRef.current.raf = requestAnimationFrame(step)
+  }
+  const holdEnd = (complete = false) => {
+    cancelAnimationFrame(holdRef.current.raf)
+    const c = holdRef.current.choice
+    holdRef.current.choice = null
+    setHoldPct(0)
+    // 松手时按实际按住时长兜底判定（rAF 只做视觉）
+    const heldLongEnough = holdRef.current.t0 && performance.now() - holdRef.current.t0 >= 1200
+    if ((complete || heldLongEnough) && c) pick(c)
+  }
+  useEffect(() => () => cancelAnimationFrame(holdRef.current.raf), [])
 
   const timerPct = node.timer ? timeLeft / node.timer : 1
   const urgent = node.timer ? timeLeft <= 3 : false
@@ -126,11 +173,11 @@ export default function StoryScene() {
 
       {beat === 'lines' && (
         <div className="subtitle-zone">
-          <div className="subtitle">
+          <div className={`subtitle ${lineIdx >= node.lines.length ? 'echo' : ''}`}>
             {line.slice(0, typed)}
             <span className="caret" />
           </div>
-          <div className="subtitle-hint">点 击 继 续</div>
+          <div className="subtitle-hint">点 击 加 速</div>
         </div>
       )}
 
@@ -150,7 +197,21 @@ export default function StoryScene() {
             </div>
           ) : null}
           <div className="choice-zone">
-            {node.choices.map(c => (
+            {node.choices.map(c => c.hold ? (
+              <button
+                key={c.id} className="choice-card hold-card" data-testid={`choice-${c.id}`}
+                style={{ ['--hold' as string]: holdPct }}
+                onMouseEnter={() => sfx.hover()}
+                onClick={e => e.stopPropagation()}
+                onPointerDown={e => { e.stopPropagation(); holdStart(c) }}
+                onPointerUp={() => holdEnd(false)}
+                onPointerLeave={() => holdEnd(false)}
+              >
+                <div className="hold-fill" aria-hidden />
+                <div className="t">{c.text}</div>
+                {c.sub && <div className="s">{c.sub}</div>}
+              </button>
+            ) : (
               <button
                 key={c.id} className="choice-card" data-testid={`choice-${c.id}`}
                 onMouseEnter={() => sfx.hover()}

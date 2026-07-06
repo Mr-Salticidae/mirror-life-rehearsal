@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useGame } from '../store'
+import { useGame, careerOf } from '../store'
 import { CAREER_INFO } from '../story'
 import { useStill } from './useStill'
 import { sfx } from '../lib/audio'
 
 export default function CareerIntro() {
-  const career = useGame(s => s.career)!
+  const career = careerOf(useGame(s => s.ending))!
   const info = CAREER_INFO[career]
   const still = useStill(info.introStill, info.palette, `职业前奏·${info.name}`)
   const setPhase = useGame(s => s.setPhase)

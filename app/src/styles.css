@@ -110,6 +110,17 @@ button { font-family: inherit; cursor: pointer; }
 .choice-card .s { font-size: 12px; letter-spacing: .2em; color: #b8ac90; margin-top: 8px; }
 @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
 
+/* 回响台词：金色微光，暗示"这句是因为你之前的选择" */
+.subtitle.echo { color: #e8d8ac; text-shadow: 0 0 24px rgba(216,184,120,.35), 0 2px 18px rgba(0,0,0,.9); }
+
+/* 长按选择卡：按住时金色从下往上灌满 */
+.hold-card { position: relative; overflow: hidden; touch-action: none; }
+.hold-card .hold-fill { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none;
+  height: calc(var(--hold, 0) * 100%);
+  background: linear-gradient(180deg, rgba(216,184,120,.12), rgba(216,184,120,.42));
+  transition: height .05s linear; }
+.hold-card .t, .hold-card .s { position: relative; }
+
 /* QTE 倒计时环 */
 .qte-ring { position: absolute; bottom: 42vh; left: 50%; transform: translateX(-50%); z-index: 26;
   width: 84px; height: 84px; }
@@ -230,6 +241,43 @@ button { font-family: inherit; cursor: pointer; }
 .crosshair::before, .crosshair::after { content: ''; position: absolute; background: #f0ead8cc; }
 .crosshair::before { left: 50%; top: 0; bottom: 0; width: 1.5px; transform: translateX(-50%); }
 .crosshair::after { top: 50%; left: 0; right: 0; height: 1.5px; transform: translateY(-50%); }
+
+/* ============ 评级结算演出 ============ */
+.rank-splash { position: absolute; inset: 0; z-index: 34; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2.6vh; background: rgba(0,0,0,.72);
+  animation: sceneIn .4s ease both; }
+.rank-splash .verdict { font-size: clamp(22px, 2.6vw, 38px); letter-spacing: .5em; text-indent: .5em;
+  color: #f0ead8; animation: fadeSlideUp .6s .1s ease both; }
+.rank-splash .grade { font-size: clamp(90px, 14vw, 200px); font-weight: 700; line-height: 1;
+  animation: rankPop .7s .45s cubic-bezier(.2, 2.2, .4, 1) both;
+  text-shadow: 0 0 60px currentColor; }
+.rank-splash .grade.S { color: #ffd86a; }
+.rank-splash .grade.A { color: #8fd8ff; }
+.rank-splash .grade.B { color: #b8c0cc; }
+.rank-splash .sub { font-size: 14px; letter-spacing: .35em; color: #cbbf9f;
+  animation: fadeSlideUp .6s .8s ease both; }
+@keyframes rankPop { from { opacity: 0; transform: scale(2.6) rotate(-6deg); filter: blur(14px); }
+  to { opacity: 1; transform: scale(1) rotate(0); filter: blur(0); } }
+
+/* ============ 待机页·今日人生墙 ============ */
+.hall-wall { position: absolute; right: 4vw; top: 50%; transform: translateY(-50%);
+  width: min(300px, 24vw); max-height: 62vh; overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent); }
+.hall-wall h4 { font-size: 11px; letter-spacing: .55em; color: #c9a86a99; font-weight: 400;
+  margin-bottom: 14px; text-align: center; }
+.hall-list { display: flex; flex-direction: column; gap: 10px; animation: hallScroll 26s linear infinite; }
+.hall-item { border: 1px solid rgba(255,255,255,.1); padding: 10px 16px;
+  background: rgba(12,14,22,.5); display: flex; justify-content: space-between; align-items: baseline; }
+.hall-item .ht { font-size: 13px; letter-spacing: .1em; color: #e0d6c0; }
+.hall-item .hr { font-size: 11px; letter-spacing: .15em; color: #8fa8c8; }
+.hall-item .hr b { color: #ffd86a; font-weight: 600; }
+@keyframes hallScroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+
+/* ============ 人格雷达 ============ */
+.radar { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.radar svg { width: min(200px, 16vw); height: auto; }
+.radar .cap { font-size: 11px; letter-spacing: .4em; color: #8a94a8; }
 
 /* ============ 终幕报告 ============ */
 .report { position: absolute; inset: 0; z-index: 30; overflow: hidden;

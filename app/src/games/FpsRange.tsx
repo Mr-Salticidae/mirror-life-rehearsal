@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { useGame } from '../store'
+import { useGame, Rank } from '../store'
+import { rankOf } from '../lib/titles'
+import RankSplash from '../components/RankSplash'
 import { sfx } from '../lib/audio'
 
 // 军人《守夜》：夜间靶场，鼠标视角+点击射击，60s
-// 红色标靶 +10；白色平民靶 -15；连中有 streak 加成
+// 红色标靶 +10（爆头 ×2）；白色平民靶 -15；连中有 streak 加成
 const DURATION = 60
 
 export default function FpsRange() {
@@ -13,8 +15,8 @@ export default function FpsRange() {
   const [score, setScore] = useState(0)
   const [timeLeft, setTimeLeft] = useState(DURATION)
   const [locked, setLocked] = useState(false)
-  const [over, setOver] = useState(false)
-  const stats = useRef({ score: 0, hit: 0, miss: 0, civ: 0, streak: 0, best: 0 })
+  const [over, setOver] = useState<Rank | null>(null)
+  const stats = useRef({ score: 0, hit: 0, head: 0, miss: 0, civ: 0, streak: 0, best: 0 })
   const startRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function FpsRange() {
       renderer = new THREE.WebGLRenderer({ antialias: true })
     } catch {
       // WebGL 不可用：跳过游戏直达报告，主流程不断
-      finishGame(0, '完成了一夜坚守')
+      finishGame(0, '完成了一夜坚守', 'B')
       return
     }
     renderer.setSize(window.innerWidth, window.innerHeight)
@@ -92,12 +94,23 @@ export default function FpsRange() {
         }),
       )
       body.position.y = 1.05
+      body.userData.part = 'body'
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.26, 12, 10),
+        new THREE.MeshStandardMaterial({
+          color: civilian ? 0xd8d8d0 : 0xd84838,
+          emissive: civilian ? 0x444440 : 0x701810,
+          roughness: 0.5,
+        }),
+      )
+      head.position.y = 2.15
+      head.userData.part = 'head'
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(0.65, 0.045, 8, 32),
         new THREE.MeshBasicMaterial({ color: civilian ? 0xffffff : 0xff5040 }),
       )
       ring.position.y = 1.05
-      grp.add(body, ring)
+      grp.add(body, head, ring)
       grp.position.set((Math.random() - 0.5) * 36, 0, -14 - Math.random() * 34)
       grp.scale.setScalar(0.01)
       scene.add(grp)
@@ -144,13 +157,17 @@ export default function FpsRange() {
       const hits = ray.intersectObjects(objs, false)
       const st = stats.current
       if (hits.length) {
-        const t = alive.find(tt => tt.grp.children.includes(hits[0].object as THREE.Mesh))!
+        const hitObj = hits[0].object as THREE.Mesh
+        const t = alive.find(tt => tt.grp.children.includes(hitObj))!
         t.dead = true
         if (t.civilian) {
           sfx.wrong(); st.civ++; st.streak = 0; st.score = Math.max(0, st.score - 15)
         } else {
+          const headshot = hitObj.userData.part === 'head'
           sfx.hit(); st.hit++; st.streak++; st.best = Math.max(st.best, st.streak)
-          st.score += 10 + Math.min(st.streak - 1, 5) * 2
+          if (headshot) st.head++
+          const base = 10 + Math.min(st.streak - 1, 5) * 2
+          st.score += headshot ? base * 2 : base
         }
         setScore(st.score)
       } else {
@@ -205,11 +222,13 @@ export default function FpsRange() {
 
       if (started && left <= 0 && !endedRef.current) {
         endedRef.current = true
-        setOver(true)
         document.exitPointerLock()
         const st = stats.current
+        const rank = rankOf('fps', st.score)
+        setOver(rank)
+        sfx.confirm()
         setTimeout(() => finishGame(st.score,
-          `命中 ${st.hit} 个标靶，最长连击 ${st.best}，误伤 ${st.civ} 次`), 2600)
+          `命中 ${st.hit} 个标靶（爆头 ${st.head} 次），最长连击 ${st.best}，误伤 ${st.civ} 次`, rank), 3000)
       }
       renderer.render(scene, camera)
     }
@@ -250,15 +269,10 @@ export default function FpsRange() {
       {!locked && !over && (
         <div className="game-overlay-msg" style={{ pointerEvents: 'none' }}>
           <div className="big">守 夜</div>
-          <div className="game-hint">点击画面锁定视角 · 红色标靶射击 · 白色平民勿伤</div>
+          <div className="game-hint">点击画面锁定视角 · 红色标靶射击（打头×2）· 白色平民勿伤</div>
         </div>
       )}
-      {over && (
-        <div className="game-overlay-msg">
-          <div className="big">考核结束</div>
-          <div className="game-hint">得分 {score}</div>
-        </div>
-      )}
+      {over && <RankSplash rank={over} title="考 核 结 束" sub={`得分 ${score}`} />}
     </div>
   )
 }

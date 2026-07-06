@@ -1,7 +1,8 @@
-// 《镜像自我·人生预演》分支剧本数据
-// 三条职业线：军人(brave 勇) / 画家(color 彩) / 赛车手(speed 驰)
+// 《镜像自我·人生预演》分支剧本数据 · 迭代一
+// 三条职业线：军人(brave 勇) / 画家(color 彩) / 赛车手(speed 驰) + 隐藏结局：无名者(drifter)
 
 export type Career = 'soldier' | 'painter' | 'racer'
+export type Ending = Career | 'drifter'
 export type Stat = 'brave' | 'color' | 'speed'
 
 export interface Choice {
@@ -9,25 +10,33 @@ export interface Choice {
   text: string
   sub?: string            // 选项副文本（小字）
   effect?: Partial<Record<Stat, number>>
-  boostDominant?: number  // 给当前最高倾向加值（D节点“坚持”）
+  boostDominant?: number  // 给当前最高倾向加值（"坚持"类选择）
   regret?: boolean        // 记遗憾 flag
-  consequence: string     // 选择后的一句后果文本（同剧照色调变化中显示）
+  hold?: boolean          // 长按型选择（按住 1.2s 确认，松手=退缩）
+  consequence: string     // 选择后的一句后果文本
+}
+
+// 回响台词：早前某个选择会让本节点多出一句"被记得"的台词
+export interface EchoLine {
+  when: string   // 前置 choiceId；'timeout:B' 表示 B 节点超时
+  text: string
 }
 
 export interface StoryNode {
   id: string
   chapter: number         // 1..3
-  chapterTitle: string    // 章节标题卡
-  age: string             // “七岁”
-  place: string           // “巷口”
+  chapterTitle: string
+  age: string
+  place: string
   still: string           // 剧照 id → /stills/{id}.jpg
-  palette: [string, string, string] // 占位图渐变色（无剧照时程序化生成）
-  lines: string[]         // 进入场景后的字幕（逐条打字机）
-  prompt: string          // 抉择提示语
-  timer?: number          // 秒；有值则为限时 QTE
-  onTimeout?: { consequence: string; regret?: boolean } // 超时=犹豫，也是一种选择
+  palette: [string, string, string]
+  lines: string[]         // 基础台词（打字机逐条）
+  echoes?: EchoLine[]     // 回响台词（匹配则追加在 lines 之后）
+  prompt: string
+  timer?: number
+  onTimeout?: { consequence: string; regret?: boolean }
   choices: Choice[]
-  next: string | null     // 下一节点 id；null = 章末
+  next: string | null     // null = 章末
 }
 
 export const CAREER_INFO: Record<Career, {
@@ -38,7 +47,7 @@ export const CAREER_INFO: Record<Career, {
 }> = {
   soldier: {
     name: '军人', title: '守夜', game: 'fps',
-    gameHint: '鼠标瞄准 · 点击射击 · 红色为标靶 · 白色为平民，误伤扣分',
+    gameHint: '鼠标瞄准 · 点击射击 · 红色为标靶（打头×2）· 白色为平民，误伤扣分',
     introStill: 'career_soldier', endStill: 'end_soldier',
     introLines: [
       '二十六岁，你在边境哨所度过第四个冬天。',
@@ -71,6 +80,12 @@ export const CAREER_INFO: Record<Career, {
   },
 }
 
+export const DRIFTER_INFO = {
+  name: '无名者',
+  endStill: 'node_e',
+  palette: ['#0a0c12', '#232c3e', '#9fb8d8'] as [string, string, string],
+}
+
 export const NODES: Record<string, StoryNode> = {
   A: {
     id: 'A', chapter: 1, chapterTitle: '第一章 · 七岁', age: '七岁', place: '巷口',
@@ -99,16 +114,41 @@ export const NODES: Record<string, StoryNode> = {
       '老师从最后一排开始，一个一个往前收。',
       '你的格子纸还空着。',
     ],
+    echoes: [
+      { when: 'A1', text: '你的橡皮上，还沾着昨天从那面墙上蹭到的蓝色。' },
+    ],
     prompt: '老师快走到你桌前了，你落笔——',
     timer: 8,
     onTimeout: { consequence: '纸被收走了，格子还空着。有些答案，要等很多年才敢写。' },
     choices: [
       { id: 'B1', text: '不写字，画满整页', sub: '梦想没法用字写', effect: { color: 1 },
-        consequence: '老师举着你的“作文”看了很久，没有批评你。' },
-      { id: 'B2', text: '“我要开最快的车”', sub: '一行字，笔画很用力', effect: { speed: 1 },
+        consequence: '老师举着你的"作文"看了很久，没有批评你。' },
+      { id: 'B2', text: '"我要开最快的车"', sub: '一行字，笔画很用力', effect: { speed: 1 },
         consequence: '同桌笑了。你没笑。' },
-      { id: 'B3', text: '“我要保护别人”', sub: '字写得方方正正', effect: { brave: 1 },
+      { id: 'B3', text: '"我要保护别人"', sub: '字写得方方正正', effect: { brave: 1 },
         consequence: '这五个字后来你又写过一次，在一张志愿表上。' },
+    ],
+    next: 'F',
+  },
+  F: {
+    id: 'F', chapter: 1, chapterTitle: '第一章 · 七岁', age: '七岁', place: '储蓄罐',
+    still: 'node_f', palette: ['#241a12', '#5e4426', '#e8c080'],
+    lines: [
+      '储蓄罐终于满了。硬币倒在床单上，你数了三遍。',
+    ],
+    echoes: [
+      { when: 'A1', text: '巷口那面墙的颜色，在你脑子里晃了一个星期。' },
+      { when: 'A2', text: '风声还留在耳朵里。你想要更快的东西。' },
+      { when: 'A3', text: '你还记得屏幕里那些笔直的背影。' },
+    ],
+    prompt: '刚好够买一样东西——',
+    choices: [
+      { id: 'F1', text: '二十四色的颜料', sub: '铁盒的，带一支细笔', effect: { color: 1 },
+        consequence: '铁盒打开的那一声，比过年还响。' },
+      { id: 'F2', text: '会跑的四驱车模', sub: '橱窗里最快的那台', effect: { speed: 1 },
+        consequence: '你给它起了名字。它跑坏之前，赢遍了整条巷子。' },
+      { id: 'F3', text: '一副望远镜', sub: '能看到很远的地方', effect: { brave: 1 },
+        consequence: '你趴在天台上看了一夜。远处有人在站岗。' },
     ],
     next: null,
   },
@@ -118,16 +158,43 @@ export const NODES: Record<string, StoryNode> = {
     lines: [
       '高三，晚自习前的天台。',
       '最好的朋友把可乐递给你：',
-      '“说真的，你以后到底想干嘛？”',
+      '"说真的，你以后到底想干嘛？"',
+    ],
+    echoes: [
+      { when: 'B1', text: '"小学那篇用画交上去的作文，我到现在还记得。"' },
+      { when: 'B2', text: '"你小学作文就写要开最快的车，一直没变啊。"' },
+      { when: 'B3', text: '"从『我要保护别人』到现在，你没变过。"' },
+      { when: 'timeout:B', text: '"那年作文课你交了白卷。这次，别再空着了。"' },
     ],
     prompt: '你从书包里掏出了那张藏了很久的——',
     choices: [
       { id: 'C1', text: '美术集训班的招生单', sub: '折了又折，边都软了', effect: { color: 2 },
-        consequence: '“学费我自己想办法。”你听见自己说。' },
+        consequence: '"学费我自己想办法。"你听见自己说。' },
       { id: 'C2', text: '军校的报名简章', sub: '体检标准你背下来了', effect: { brave: 2 },
-        consequence: '朋友沉默了一会儿，说：“你肯定行。”' },
+        consequence: '朋友沉默了一会儿，说："你肯定行。"' },
       { id: 'C3', text: '卡丁车场的兼职申请', sub: '离赛道近一点也好', effect: { speed: 2 },
-        consequence: '“先摸到方向盘再说。”你把可乐一口喝完。' },
+        consequence: '"先摸到方向盘再说。"你把可乐一口喝完。' },
+    ],
+    next: 'G',
+  },
+  G: {
+    id: 'G', chapter: 2, chapterTitle: '第二章 · 十七岁', age: '十七岁', place: '走廊',
+    still: 'node_g', palette: ['#1a1e22', '#3a4a52', '#a8c0cc'],
+    lines: [
+      '月考成绩出来了，往下掉了十一名。',
+      '班主任把你叫到走廊，成绩单折在他手里：',
+      '"最近在忙什么，你自己心里清楚。"',
+    ],
+    prompt: '你开口——',
+    timer: 8,
+    onTimeout: { consequence: '走廊里只有风。他叹了口气，把成绩单塞回你手里。' },
+    choices: [
+      { id: 'G1', text: '"我知道自己在做什么。"', sub: '声音不大，但没有抖', boostDominant: 1,
+        consequence: '他盯着你看了很久，最后只说了一句："别后悔。"' },
+      { id: 'G2', text: '"我会收心的。"', sub: '先过了这一关再说', regret: true,
+        consequence: '他点点头走了。你把那句话咽了回去，咽得很慢。' },
+      { id: 'G3', text: '接过成绩单，什么也没说', sub: '沉默也是一种回答',
+        consequence: '纸的边缘割了一下手指。你没吭声。' },
     ],
     next: 'D',
   },
@@ -137,18 +204,45 @@ export const NODES: Record<string, StoryNode> = {
     lines: [
       '深夜十一点，客厅的灯还亮着。',
       '门缝里漏进来一条光，和压低的争执声。',
-      '“……那条路太苦了，走不通的。”',
+      '"……那条路太苦了，走不通的。"',
+    ],
+    echoes: [
+      { when: 'G1', text: '白天在走廊说过的话，今晚要再说一遍——这次是对他们。' },
+      { when: 'G2', text: '你答应过老师要收心。可枕头底下那张纸，今晚又烫了起来。' },
     ],
     prompt: '门把手就在手边。你——',
     timer: 10,
     onTimeout: { consequence: '客厅的灯灭了。你在门后站了很久，什么也没说。', regret: true },
     choices: [
-      { id: 'D1', text: '推门进去，把话说完', sub: '就今晚，说清楚', boostDominant: 2,
+      { id: 'D1', text: '推门进去，把话说完', sub: '按住不放，直到门开', boostDominant: 2, hold: true,
         consequence: '那晚的话你说得磕磕绊绊，但一句都没有收回。' },
       { id: 'D2', text: '回到床上，再想想', sub: '也许他们是对的', regret: true,
         consequence: '你躺回黑暗里。那张纸在枕头下面，又压了很多年。' },
     ],
     next: null,
+  },
+  H: {
+    id: 'H', chapter: 3, chapterTitle: '第三章 · 二十五岁', age: '二十二岁', place: '出租屋',
+    still: 'node_h', palette: ['#181410', '#4a3a24', '#d8b070'],
+    lines: [
+      '二十二岁，第一份工资到账。',
+      '扣掉房租，剩下的数字不大——但完整地属于你。',
+    ],
+    echoes: [
+      { when: 'D1', text: '那晚推开门之后，这条路你已经走了五年。' },
+      { when: 'D2', text: '有些话当年没说出口。这五年，你在用别的方式对自己说。' },
+      { when: 'timeout:D', text: '有些话当年没说出口。这五年，你在用别的方式对自己说。' },
+    ],
+    prompt: '你给自己买了——',
+    choices: [
+      { id: 'H1', text: '一套正经的画具', sub: '不再是铁盒颜料了', effect: { color: 1 },
+        consequence: '快递箱拆开的瞬间，你想起了七岁那声铁盒的响。' },
+      { id: 'H2', text: '一次赛道日体验券', sub: '两小时，真正的赛道', effect: { speed: 1 },
+        consequence: '头盔扣上的那一刻，整个世界都安静了。' },
+      { id: 'H3', text: '一双能走长路的靴子', sub: '结实，防水，耐磨', effect: { brave: 1 },
+        consequence: '你知道自己要去的地方，路不会太好走。' },
+    ],
+    next: 'E',
   },
   E: {
     id: 'E', chapter: 3, chapterTitle: '第三章 · 二十五岁', age: '二十五岁', place: '镜前',
@@ -157,6 +251,9 @@ export const NODES: Record<string, StoryNode> = {
       '二十五岁生日，你在镜子前站了很久。',
       '镜子里的人，轮廓和你一模一样，',
       '但走的是那条你差点选了的路。',
+    ],
+    echoes: [
+      { when: 'regret', text: '镜子里的人，替你说了那句你没说出口的话。' },
     ],
     prompt: '镜面泛起涟漪。这段预演人生——',
     choices: [
@@ -168,9 +265,9 @@ export const NODES: Record<string, StoryNode> = {
 }
 
 export const CHAPTER_FLOW = [
-  { chapter: 1, nodes: ['A', 'B'] },
-  { chapter: 2, nodes: ['C', 'D'] },
-  { chapter: 3, nodes: ['E'] },
+  { chapter: 1, nodes: ['A', 'B', 'F'] },
+  { chapter: 2, nodes: ['C', 'G', 'D'] },
+  { chapter: 3, nodes: ['H', 'E'] },
 ]
 
 export function dominantCareer(stats: Record<Stat, number>): Career {
@@ -179,4 +276,10 @@ export function dominantCareer(stats: Record<Stat, number>): Career {
   ]
   entries.sort((a, b) => b[1] - a[1])
   return entries[0][0]
+}
+
+// 无名者触发：走进镜子时，超时犹豫 ≥2 次，或三种倾向完全打平
+export function isDrifter(stats: Record<Stat, number>, timeouts: number): boolean {
+  if (timeouts >= 2) return true
+  return stats.brave === stats.color && stats.color === stats.speed
 }

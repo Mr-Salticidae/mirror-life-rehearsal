@@ -42,11 +42,11 @@ function useIdleReset() {
 function useDevJump() {
   useEffect(() => {
     const c = new URLSearchParams(location.search).get('career')
-    if (c === 'soldier' || c === 'painter' || c === 'racer') {
+    if (c === 'soldier' || c === 'painter' || c === 'racer' || c === 'drifter') {
       const g = useGame.getState()
       g.start()
-      g.chooseCareer(c, false)
-      g.setPhase('career-intro')
+      g.chooseEnding(c, false)
+      g.setPhase(c === 'drifter' ? 'report' : 'career-intro')
     }
   }, [])
 }
