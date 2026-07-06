@@ -1,0 +1,24 @@
+# main 直推哨兵：免费版私有库无法启用分支保护，本 Action 作为告警兜底。
+# 任何非仓库主的 main 直推 → 自动开 issue 提醒（协作流程要求内容组走分支+PR，见 COLLABORATION.md）
+name: main-guard
+on:
+  push:
+    branches: [main]
+permissions:
+  issues: write
+jobs:
+  alert-direct-push:
+    if: github.actor != 'Mr-Salticidae'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open alert issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "⚠️ main 收到直推：@${{ github.actor }}" \
+            --body "@Mr-Salticidae 检测到 **@${{ github.actor }}** 直接推送到 main（commit ${{ github.sha }}）。
+
+按协作约定（COLLABORATION.md 第五节），内容组的修改应走 \`content/*\` 分支 + PR。
+请确认这次直推内容；若需回退：\`git revert ${{ github.sha }}\`。"
