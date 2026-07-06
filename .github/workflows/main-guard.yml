@@ -14,11 +14,8 @@ jobs:
       - name: Open alert issue
         env:
           GH_TOKEN: ${{ github.token }}
+          PUSHER: ${{ github.actor }}
+          SHA: ${{ github.sha }}
         run: |
-          gh issue create \
-            --repo "${{ github.repository }}" \
-            --title "⚠️ main 收到直推：@${{ github.actor }}" \
-            --body "@Mr-Salticidae 检测到 **@${{ github.actor }}** 直接推送到 main（commit ${{ github.sha }}）。
-
-按协作约定（COLLABORATION.md 第五节），内容组的修改应走 \`content/*\` 分支 + PR。
-请确认这次直推内容；若需回退：\`git revert ${{ github.sha }}\`。"
+          BODY="@Mr-Salticidae 检测到 **@${PUSHER}** 直接推送到 main（commit ${SHA}）。按协作约定（COLLABORATION.md 第五节），内容组的修改应走 content/* 分支 + PR。请确认这次直推内容；若需回退：git revert ${SHA}"
+          gh issue create --repo "${{ github.repository }}" --title "⚠️ main 收到直推：@${PUSHER}" --body "$BODY"
