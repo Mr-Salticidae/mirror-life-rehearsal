@@ -1,7 +1,7 @@
 // RTX 本地 AI 人生预演报告
 // OpenAI 兼容端点（LM Studio / Ollama / vLLM），public/config.json 可配；失败走本地模板兜底
 // 称号由本地称号池决定（lib/titles.ts），AI 只负责叙事段落与结语
-import { Career, Ending, CAREER_INFO } from '../story'
+import { Ending, CAREER_INFO } from '../story'
 import { PathStep } from '../store'
 
 export interface ReportInput {
@@ -36,11 +36,9 @@ async function loadConfig(): Promise<AiConfig> {
 
 function pathSummary(input: ReportInput): string {
   const steps = input.path.map(p => `${p.nodeId}:${p.choiceText}`).join('；')
-  const endDesc = input.ending === 'drifter'
-    ? '最终没有走进任何一扇门——镜子判定此人为「无名者」：一生都在犹豫与摇摆，没有选择也是一种人生'
-    : `最终职业：${CAREER_INFO[input.ending as Career].name}` +
-      (input.overridden ? '（在镜前换了一扇门）' : '（顺着预演走了进去）') +
-      `。职业体验：${input.gameDetail}`
+  const endDesc = `最终职业：${CAREER_INFO[input.ending].name}` +
+    (input.overridden ? '（在镜前换了一扇门）' : '（顺着预演走了进去）') +
+    `。职业体验：${input.gameDetail}`
   return `选择轨迹：${steps}。${endDesc}` +
     (input.regret ? '。轨迹里有过一次没说出口的遗憾' : '') +
     (input.timeouts > 0 ? `。犹豫（超时未选）${input.timeouts} 次` : '') + '。'
@@ -69,8 +67,7 @@ export async function generateReport(input: ReportInput): Promise<Report> {
               '你是《镜像自我·人生预演》的旁白，文风克制、电影感、第二人称，不用感叹号，不说教。' +
               '根据玩家的人生选择轨迹，输出严格的 JSON（不要 markdown 代码块）：' +
               '{"paragraphs":["童年段","少年段","结局段"],"finalWord":"给现实中的这个人的一句话，30字内"}。' +
-              '每段 60~90 字。若轨迹里有遗憾或犹豫，在少年段轻轻点到，不渲染。' +
-              '若此人是「无名者」（未选择任何职业），结局段写"没有选择"本身，冷静而不悲观。',
+              '每段 60~90 字。若轨迹里有遗憾或犹豫，在少年段轻轻点到，不渲染。',
           },
           { role: 'user', content: pathSummary(input) },
         ],
@@ -91,7 +88,7 @@ export async function generateReport(input: ReportInput): Promise<Report> {
 }
 
 // ---------- 模板兜底 ----------
-const T: Record<Career, { child: string; teen: string; job: string; word: string }> = {
+const T: Record<Ending, { child: string; teen: string; job: string; word: string }> = {
   soldier: {
     child: '七岁那年，别人都在看热闹，你在电器行的玻璃前站得笔直。整齐的脚步声穿过屏幕落进你心里，像一颗钉子，钉住了后来所有的摇晃。',
     teen: '十七岁，你把体检标准背得比课文还熟。{REGRET}那张报名表被你压平了很多次，最后一次，它没有再皱回去。',
@@ -110,20 +107,22 @@ const T: Record<Career, { child: string; teen: string; job: string; word: string
     job: '于是预演里的你驶进了雨夜的环线。{GAME}引擎声盖过了所有说「走不通」的声音——路是被车轮说服的。',
     word: '现实里的油门不在车上，在你明天早上的选择里。',
   },
-}
-
-const DRIFTER_T = {
-  child: '七岁那年，巷口有三样东西同时叫住了你。你都看了，都喜欢，都没有伸手。回家的路上你想：以后再说吧。以后很长，你一直这么想。',
-  teen: '十七岁的天台、走廊和深夜的门缝，每一次你都站在原地。不是不想要——是每一样都想要，于是每一样都没敢先要。犹豫也很累，你比谁都清楚。',
-  job: '二十五岁，镜子没有为你亮起任何一扇门。但镜子说：没有选择，也是被你亲手选出来的一种人生。它把这句话留给你，不带责备。',
-  word: '下一次心跳加速的时候，别管对错，先伸手。',
+  musician: {
+    child: '七岁那年，那盘二手磁带在最小的音量里响了一整晚。你把耳朵贴在录音机上，听见了一个比巷子大得多的世界。',
+    teen: '十七岁，你在课本下面打拍子，手指敲的是桌板，心里响的是一整支乐队。{REGRET}那把二手吉他进家门时弦都锈了，你一根一根换掉。',
+    job: '于是预演里的你站上了地下的小舞台。{GAME}灯烫，手抖，但第一个和弦落下去的时候，台下有人跟着晃——这歌没白写。',
+    word: '现实里那段旋律还在。哼出来，别让它只在你脑子里开演唱会。',
+  },
+  astronaut: {
+    child: '七岁那年，你用攒下的硬币换了一副望远镜，在天台趴了一整夜。别人在数星星，你在找路。',
+    teen: '十七岁，招飞简章上的视力要求你查了三遍。{REGRET}体检那天你起得比天亮还早，像去赴一个和天空的约。',
+    job: '于是预演里的你飘在一整柜台的星星中间。{GAME}地球在舷窗外缓缓转动，你想起天台上那个孩子——他到得比想象更远。',
+    word: '现实里的远方不在天上，在你今晚敢不敢点开那个报名入口。',
+  },
 }
 
 export function templateReport(input: ReportInput): Report {
-  if (input.ending === 'drifter') {
-    return { paragraphs: [DRIFTER_T.child, DRIFTER_T.teen, DRIFTER_T.job], finalWord: DRIFTER_T.word, fromAI: false }
-  }
-  const t = T[input.ending as Career]
+  const t = T[input.ending]
   const regretLine = input.regret
     ? '有一个深夜你在门后停了很久，那次沉默你一直记得。'
     : ''

@@ -1,9 +1,9 @@
-// 《镜像自我·人生预演》分支剧本数据 · 迭代一
-// 三条职业线：军人(brave 勇) / 画家(color 彩) / 赛车手(speed 驰) + 隐藏结局：无名者(drifter)
+// 《镜像自我·人生预演》分支剧本数据 · 迭代三（五结局架构，基准：content/五结局扩容计划_db.md）
+// 五条职业线：哨兵(guard 守) / 画家(create 创) / 赛车手(swift 疾) / 音乐人(rhythm 韵) / 宇航员(far 远)
 
-export type Career = 'soldier' | 'painter' | 'racer'
-export type Ending = Career | 'drifter'
-export type Stat = 'brave' | 'color' | 'speed'
+export type Career = 'soldier' | 'painter' | 'racer' | 'musician' | 'astronaut'
+export type Ending = Career
+export type Stat = 'guard' | 'create' | 'swift' | 'rhythm' | 'far'
 
 export interface Choice {
   id: string
@@ -12,31 +12,31 @@ export interface Choice {
   effect?: Partial<Record<Stat, number>>
   boostDominant?: number  // 给当前最高倾向加值（"坚持"类选择）
   regret?: boolean        // 记遗憾 flag
-  hold?: boolean          // 长按型选择（按住 1.2s 确认，松手=退缩）
+  hold?: boolean          // 长按型选择（按住 1.0s 确认，松手=退缩）
   consequence: string     // 选择后的一句后果文本
 }
 
 // 回响台词：早前某个选择会让本节点多出一句"被记得"的台词
 export interface EchoLine {
-  when: string   // 前置 choiceId；'timeout:B' 表示 B 节点超时
+  when: string   // 前置 choiceId；'timeout:B' 表示 B 节点超时；'regret' 表示遗憾 flag
   text: string
 }
 
 export interface StoryNode {
   id: string
-  chapter: number         // 1..3
+  chapter: number
   chapterTitle: string
   age: string
   place: string
-  still: string           // 剧照 id → /stills/{id}.jpg
+  still: string
   palette: [string, string, string]
-  lines: string[]         // 基础台词（打字机逐条）
-  echoes?: EchoLine[]     // 回响台词（匹配则追加在 lines 之后）
+  lines: string[]
+  echoes?: EchoLine[]
   prompt: string
   timer?: number
   onTimeout?: { consequence: string; regret?: boolean }
   choices: Choice[]
-  next: string | null     // null = 章末
+  next: string | null
 }
 
 export const CAREER_INFO: Record<Career, {
@@ -44,9 +44,11 @@ export const CAREER_INFO: Record<Career, {
   introStill: string; endStill: string
   introLines: string[]
   palette: [string, string, string]
+  slogan: string
+  typeCode: string
 }> = {
   soldier: {
-    name: '军人', title: '守夜', game: 'fps',
+    name: '哨兵', title: '守夜', game: 'fps',
     gameHint: '鼠标瞄准 · 点击射击 · 红色为标靶（打头×2）· 白色为平民，误伤扣分',
     introStill: 'career_soldier', endStill: 'end_soldier',
     introLines: [
@@ -55,6 +57,8 @@ export const CAREER_INFO: Record<Career, {
       '远处传来动静——考核开始了。',
     ],
     palette: ['#0a1420', '#1d3a52', '#7fb4d8'],
+    slogan: '你守过的夜，成了别人的白天。',
+    typeCode: 'GNTR',
   },
   painter: {
     name: '画家', title: '一面墙', game: 'graffiti',
@@ -66,6 +70,8 @@ export const CAREER_INFO: Record<Career, {
       '凌晨四点，这面墙在等你。',
     ],
     palette: ['#1a1026', '#43245e', '#c99df0'],
+    slogan: '你留下的颜色，比你的名字活得更久。',
+    typeCode: 'CNSR',
   },
   racer: {
     name: '赛车手', title: '夜环线', game: 'race',
@@ -77,13 +83,35 @@ export const CAREER_INFO: Record<Career, {
       '引擎在等你把油门踩下去。',
     ],
     palette: ['#03060f', '#12233f', '#4f8fe8'],
+    slogan: '你追过的风，最后成了你身后的路。',
+    typeCode: 'CFSV',
   },
-}
-
-export const DRIFTER_INFO = {
-  name: '无名者',
-  endStill: 'node_e',
-  palette: ['#0a0c12', '#232c3e', '#9fb8d8'] as [string, string, string],
+  musician: {
+    name: '音乐人', title: '躁动', game: 'rhythm',
+    gameHint: 'D F J K 或点击轨道 · 在判定线接拍 · 连击越高分越多',
+    introStill: 'career_musician', endStill: 'end_musician',
+    introLines: [
+      '二十六岁，你的歌还没几个人听过。',
+      '但今晚，地下那间小 livehouse 把灯交给了你。',
+      '第一个和弦响起来的时候，手是抖的。',
+    ],
+    palette: ['#1a0f24', '#4b1f5e', '#c98bff'],
+    slogan: '你踩下的每一拍，都有人跟着晃。',
+    typeCode: 'CNTV',
+  },
+  astronaut: {
+    name: '宇航员', title: '失重', game: 'dock',
+    gameHint: '← → 微调速度 · 空格制动 · 把飞船送进对接窗口',
+    introStill: 'career_astronaut', endStill: 'end_astronaut',
+    introLines: [
+      '二十六岁，你终于飞过了七岁时用望远镜看过的地方。',
+      '舱外是整柜台的星星，舱内只有你的呼吸。',
+      '前方是空间站的对接窗口——慢一点，稳一点。',
+    ],
+    palette: ['#040814', '#10244a', '#7fb4e8'],
+    slogan: '你看过的远方，后来成了别人的方向。',
+    typeCode: 'CFSR',
+  },
 }
 
 export const NODES: Record<string, StoryNode> = {
@@ -97,11 +125,11 @@ export const NODES: Record<string, StoryNode> = {
     ],
     prompt: '你多看了一眼——',
     choices: [
-      { id: 'A1', text: '墙上那幅没画完的涂鸦', sub: '颜色在夕阳里发烫', effect: { color: 2 },
+      { id: 'A1', text: '墙上那幅没画完的涂鸦', sub: '颜色在夕阳里发烫', effect: { create: 2 },
         consequence: '你伸手碰了碰墙上的颜料。那天之后，你的课本边角再也没有空白过。' },
-      { id: 'A2', text: '巷尾飞驰而过的自行车少年', sub: '车轮卷起一阵风', effect: { speed: 2 },
+      { id: 'A2', text: '巷尾飞驰而过的自行车少年', sub: '车轮卷起一阵风', effect: { swift: 2 },
         consequence: '风从耳边过去的声音，你记了很多年。' },
-      { id: 'A3', text: '电器行电视里的阅兵直播', sub: '脚步声整齐得像一个人', effect: { brave: 2 },
+      { id: 'A3', text: '电器行电视里的阅兵直播', sub: '脚步声整齐得像一个人', effect: { guard: 2 },
         consequence: '你在玻璃橱窗前站得笔直，站到天黑。' },
     ],
     next: 'B',
@@ -121,11 +149,11 @@ export const NODES: Record<string, StoryNode> = {
     timer: 8,
     onTimeout: { consequence: '纸被收走了，格子还空着。有些答案，要等很多年才敢写。' },
     choices: [
-      { id: 'B1', text: '不写字，画满整页', sub: '梦想没法用字写', effect: { color: 1 },
+      { id: 'B1', text: '不写字，画满整页', sub: '梦想没法用字写', effect: { create: 1 },
         consequence: '老师举着你的"作文"看了很久，没有批评你。' },
-      { id: 'B2', text: '"我要开最快的车"', sub: '一行字，笔画很用力', effect: { speed: 1 },
+      { id: 'B2', text: '"我要开最快的车"', sub: '一行字，笔画很用力', effect: { swift: 1 },
         consequence: '同桌笑了。你没笑。' },
-      { id: 'B3', text: '"我要保护别人"', sub: '字写得方方正正', effect: { brave: 1 },
+      { id: 'B3', text: '"我要保护别人"', sub: '字写得方方正正', effect: { guard: 1 },
         consequence: '这五个字后来你又写过一次，在一张志愿表上。' },
     ],
     next: 'F',
@@ -143,12 +171,14 @@ export const NODES: Record<string, StoryNode> = {
     ],
     prompt: '刚好够买一样东西——',
     choices: [
-      { id: 'F1', text: '二十四色的颜料', sub: '铁盒的，带一支细笔', effect: { color: 1 },
+      { id: 'F1', text: '二十四色的颜料', sub: '铁盒的，带一支细笔', effect: { create: 1 },
         consequence: '铁盒打开的那一声，比过年还响。' },
-      { id: 'F2', text: '会跑的四驱车模', sub: '橱窗里最快的那台', effect: { speed: 1 },
+      { id: 'F2', text: '会跑的四驱车模', sub: '橱窗里最快的那台', effect: { swift: 1 },
         consequence: '你给它起了名字。它跑坏之前，赢遍了整条巷子。' },
-      { id: 'F3', text: '一副望远镜', sub: '能看到很远的地方', effect: { brave: 1 },
-        consequence: '你趴在天台上看了一夜。远处有人在站岗。' },
+      { id: 'F3', text: '一副望远镜', sub: '能看到很远的地方', effect: { far: 2 },
+        consequence: '你趴在天台上看了一夜，第一次知道天上也有路。' },
+      { id: 'F4', text: '一盘二手摇滚磁带', sub: '封面都磨白了', effect: { rhythm: 2 },
+        consequence: '那晚你把音量拧到最小，耳朵贴着录音机听完了整面 A 面。' },
     ],
     next: null,
   },
@@ -165,15 +195,19 @@ export const NODES: Record<string, StoryNode> = {
       { when: 'B2', text: '"你小学作文就写要开最快的车，一直没变啊。"' },
       { when: 'B3', text: '"从『我要保护别人』到现在，你没变过。"' },
       { when: 'timeout:B', text: '"那年作文课你交了白卷。这次，别再空着了。"' },
+      { when: 'F3', text: '那副望远镜还在你抽屉里，镜片擦得很亮。' },
+      { when: 'F4', text: '那盘磁带你已经听到会背，连走音的地方都会。' },
     ],
     prompt: '你从书包里掏出了那张藏了很久的——',
     choices: [
-      { id: 'C1', text: '美术集训班的招生单', sub: '折了又折，边都软了', effect: { color: 2 },
+      { id: 'C1', text: '美术集训班的招生单', sub: '折了又折，边都软了', effect: { create: 2 },
         consequence: '"学费我自己想办法。"你听见自己说。' },
-      { id: 'C2', text: '军校的报名简章', sub: '体检标准你背下来了', effect: { brave: 2 },
+      { id: 'C2', text: '军校的报名简章', sub: '体检标准你背下来了', effect: { guard: 2 },
         consequence: '朋友沉默了一会儿，说："你肯定行。"' },
-      { id: 'C3', text: '卡丁车场的兼职申请', sub: '离赛道近一点也好', effect: { speed: 2 },
+      { id: 'C3', text: '卡丁车场的兼职申请', sub: '离赛道近一点也好', effect: { swift: 2 },
         consequence: '"先摸到方向盘再说。"你把可乐一口喝完。' },
+      { id: 'C4', text: '航空招飞的简章', sub: '视力要求你查过三遍', effect: { far: 2 },
+        consequence: '"上面很冷吧。"朋友说。你说不知道，但想亲自去冷一次。' },
     ],
     next: 'G',
   },
@@ -232,15 +266,18 @@ export const NODES: Record<string, StoryNode> = {
       { when: 'D1', text: '那晚推开门之后，这条路你已经走了五年。' },
       { when: 'D2', text: '有些话当年没说出口。这五年，你在用别的方式对自己说。' },
       { when: 'timeout:D', text: '有些话当年没说出口。这五年，你在用别的方式对自己说。' },
+      { when: 'F4', text: '那盘磁带早就听坏了。现在你想自己做一盘。' },
     ],
     prompt: '你给自己买了——',
     choices: [
-      { id: 'H1', text: '一套正经的画具', sub: '不再是铁盒颜料了', effect: { color: 1 },
+      { id: 'H1', text: '一套正经的画具', sub: '不再是铁盒颜料了', effect: { create: 1 },
         consequence: '快递箱拆开的瞬间，你想起了七岁那声铁盒的响。' },
-      { id: 'H2', text: '一次赛道日体验券', sub: '两小时，真正的赛道', effect: { speed: 1 },
+      { id: 'H2', text: '一次赛道日体验券', sub: '两小时，真正的赛道', effect: { swift: 1 },
         consequence: '头盔扣上的那一刻，整个世界都安静了。' },
-      { id: 'H3', text: '一双能走长路的靴子', sub: '结实，防水，耐磨', effect: { brave: 1 },
+      { id: 'H3', text: '一双能走长路的靴子', sub: '结实，防水，耐磨', effect: { guard: 1 },
         consequence: '你知道自己要去的地方，路不会太好走。' },
+      { id: 'H4', text: '一把二手吉他', sub: '琴颈上有前主人的手汗', effect: { rhythm: 2 },
+        consequence: '第一个和弦按响时，楼下敲了两下暖气管。你弹得更轻，但没有停。' },
     ],
     next: 'E',
   },
@@ -270,16 +307,40 @@ export const CHAPTER_FLOW = [
   { chapter: 3, nodes: ['H', 'E'] },
 ]
 
-export function dominantCareer(stats: Record<Stat, number>): Career {
-  const entries: [Career, number][] = [
-    ['soldier', stats.brave], ['painter', stats.color], ['racer', stats.speed],
-  ]
-  entries.sort((a, b) => b[1] - a[1])
-  return entries[0][0]
+// 每维全树最大可达分（不含 boostDominant），构建期静态值
+export const MAX_REACH: Record<Stat, number> = {
+  guard: 6,   // A3(2)+B3(1)+C2(2)+H3(1)
+  create: 7,  // A1(2)+B1(1)+F1(1)+C1(2)+H1(1)
+  swift: 7,   // A2(2)+B2(1)+F2(1)+C3(2)+H2(1)
+  rhythm: 4,  // F4(2)+H4(2)
+  far: 4,     // F3(2)+C4(2)
 }
 
-// 无名者触发：走进镜子时，超时犹豫 ≥2 次，或三种倾向完全打平
-export function isDrifter(stats: Record<Stat, number>, timeouts: number): boolean {
-  if (timeouts >= 2) return true
-  return stats.brave === stats.color && stats.color === stats.speed
+const STAT_TO_CAREER: [Stat, Career][] = [
+  ['guard', 'soldier'], ['create', 'painter'], ['swift', 'racer'],
+  ['rhythm', 'musician'], ['far', 'astronaut'],
+]
+
+// 五维路由：开方阻尼归一化 —— norm = stat / sqrt(maxReach)
+// 相比纯占比(stat/max)，瘦维度(韵/远)仍有可达性优势，但两次顺手点击不再直接封顶；
+// 并列时按固定优先级 守 > 创 > 疾 > 韵 > 远（STAT_TO_CAREER 的声明序）。
+export function dominantEnding(stats: Record<Stat, number>): Career {
+  let best: Career = 'soldier'
+  let bestScore = -1
+  for (const [stat, career] of STAT_TO_CAREER) {
+    const score = stats[stat] / Math.sqrt(MAX_REACH[stat])
+    if (score > bestScore + 1e-9) { bestScore = score; best = career }
+  }
+  return best
+}
+
+// 当前最高维（boostDominant 用），同上优先级
+export function dominantStat(stats: Record<Stat, number>): Stat {
+  let best: Stat = 'guard'
+  let bestScore = -1
+  for (const [stat] of STAT_TO_CAREER) {
+    const score = stats[stat] / Math.sqrt(MAX_REACH[stat])
+    if (score > bestScore + 1e-9) { bestScore = score; best = stat }
+  }
+  return best
 }

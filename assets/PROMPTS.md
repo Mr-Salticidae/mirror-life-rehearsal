@@ -84,7 +84,7 @@ instant noodle cup and keys on the desk, city lights blurred outside the small
 window, modest but dignified, warm amber against cool night blue
 ```
 
-## 职业线（6 张）
+## 职业线（10 张）
 
 ### career_soldier —— 军人前奏（风雪哨所）
 ```
@@ -129,6 +129,40 @@ amber reflections
 a race car crossing the finish line on a rain-soaked night circuit, long exposure
 light trails, spray of water kicked up glowing in stadium lights, checkered flag
 motion blur, triumphant energy, deep blue night with golden flare
+```
+
+### career_musician —— 音乐人前奏（地下 livehouse，迭代三新增）
+```
+a young musician seen from behind holding an electric guitar, standing on a
+small dim stage in an underground livehouse, single warm spotlight cutting
+through haze and fog, amplifier glow, tangled cables, sparse silhouetted
+crowd in the dark, first chord about to strike, electric purple and amber
+palette, anticipation and raw energy
+```
+
+### end_musician —— 音乐人结局（散场后的舞台，迭代三新增）
+```
+an empty small stage after a gig seen from behind the musician's silhouette,
+a single dropped guitar pick catching warm light, confetti and setlist on
+the floor, crowd's glow sticks fading in the dark hall, sweat mist in
+stage light, triumphant exhaustion, warm amber over electric purple
+```
+
+### career_astronaut —— 宇航员前奏（舷窗失重，迭代三新增）
+```
+a young astronaut seen from behind in a flightsuit floating weightless inside
+a dim station module, face pressed near a small porthole window showing a vast
+starfield and the blue curve of earth, harness tethers drifting, instrument
+panels glowing soft blue-green, profound silence and awe, deep space blue
+with one warm interior lamp
+```
+
+### end_astronaut —— 宇航员结局（对接成功，迭代三新增）
+```
+a spacecraft cockpit seen from behind the astronaut, two vessels docked in
+perfect alignment above a glowing earth at the terminator line, golden
+sunrise spilling over the planet's edge, soft docking lights, reflection of
+stars on the window glass, serene and sacred, warm gold over deep space blue
 ```
 
 ## 游戏内资产（1 张）

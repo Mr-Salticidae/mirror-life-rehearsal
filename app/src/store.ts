@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Career, Ending, Stat, dominantCareer } from './story'
+import { Ending, Stat, dominantStat } from './story'
 
 export type Phase =
   | 'attract'      // 待机吸引模式
@@ -22,8 +22,8 @@ interface GameState {
   stats: Record<Stat, number>
   path: PathStep[]
   regret: boolean
-  timeouts: number           // 超时犹豫次数（无名者触发条件之一）
-  ending: Ending | null      // 职业 或 'drifter'
+  timeouts: number           // 犹豫（超时）次数，进报告文案
+  ending: Ending | null
   overridden: boolean        // E 节点换过门
   gameScore: number
   gameRank: Rank | null
@@ -42,7 +42,8 @@ interface GameState {
   setGraffiti(d: string): void
 }
 
-const initialStats = (): Record<Stat, number> => ({ brave: 0, color: 0, speed: 0 })
+const initialStats = (): Record<Stat, number> =>
+  ({ guard: 0, create: 0, swift: 0, rhythm: 0, far: 0 })
 
 export const useGame = create<GameState>((set, get) => ({
   phase: 'attract',
@@ -71,11 +72,7 @@ export const useGame = create<GameState>((set, get) => ({
   applyChoice: (step, effect, boostDominant, regret) => {
     const s = { ...get().stats }
     if (effect) for (const k of Object.keys(effect) as Stat[]) s[k] += effect[k] ?? 0
-    if (boostDominant) {
-      const c = dominantCareer(s)
-      const key: Stat = c === 'soldier' ? 'brave' : c === 'painter' ? 'color' : 'speed'
-      s[key] += boostDominant
-    }
+    if (boostDominant) s[dominantStat(s)] += boostDominant
     set({
       stats: s,
       path: [...get().path, step],
@@ -91,7 +88,3 @@ export const useGame = create<GameState>((set, get) => ({
   finishGame: (score, detail, rank) => set({ gameScore: score, gameDetail: detail, gameRank: rank, phase: 'report' }),
   setGraffiti: (d) => set({ graffitiData: d }),
 }))
-
-export function careerOf(e: Ending | null): Career | null {
-  return e && e !== 'drifter' ? e : null
-}

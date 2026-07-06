@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useGame, careerOf } from '../store'
-import { CAREER_INFO, DRIFTER_INFO } from '../story'
+import { useGame } from '../store'
+import { CAREER_INFO, Career, Stat, MAX_REACH } from '../story'
 import { generateReport, Report } from '../lib/ai'
 import { computeTitle } from '../lib/titles'
 import { pushHall } from '../lib/hall'
@@ -8,16 +8,30 @@ import FlowChart from './FlowChart'
 import { useStill } from './useStill'
 import { sfx } from '../lib/audio'
 
+// GPTI 式 4 轴（基准：content/五结局扩容计划_db.md 附录 C/D）
+interface Axis { name: string; l: string; r: string; letters: [string, string]; pct: number }
+function computeAxes(s: Record<Stat, number>): { axes: Axis[]; typeCode: string } {
+  const defs: Array<Omit<Axis, 'pct'> & { L: number; R: number }> = [
+    { name: '核心驱动', l: '守', r: '创', letters: ['G', 'C'], L: s.guard, R: s.create + s.swift + s.rhythm + s.far },
+    { name: '目光所向', l: '远', r: '近', letters: ['F', 'N'], L: s.swift + s.far, R: s.guard + s.create + s.rhythm },
+    { name: '与世界的距离', l: '群', r: '独', letters: ['T', 'S'], L: s.guard + s.rhythm, R: s.create + s.swift + s.far },
+    { name: '生命节奏', l: '疾', r: '缓', letters: ['V', 'R'], L: s.swift + s.rhythm, R: s.guard + s.create + s.far },
+  ]
+  const axes = defs.map(d => ({
+    name: d.name, l: d.l, r: d.r, letters: d.letters,
+    pct: d.L + d.R > 0 ? Math.round((d.L / (d.L + d.R)) * 100) : 50,
+  }))
+  const typeCode = axes.map(a => (a.pct >= 50 ? a.letters[0] : a.letters[1])).join('')
+  return { axes, typeCode }
+}
+
 export default function EndingReport() {
   const g = useGame()
   const ending = g.ending!
-  const career = careerOf(ending)
-  const info = career ? CAREER_INFO[career] : null
-  const endStillId = info ? info.endStill : DRIFTER_INFO.endStill
-  const palette = info ? info.palette : DRIFTER_INFO.palette
-  const endStill = useStill(endStillId, palette, `结局·${info?.name ?? DRIFTER_INFO.name}`)
+  const info = CAREER_INFO[ending]
+  const endStill = useStill(info.endStill, info.palette, `结局·${info.name}`)
   const [report, setReport] = useState<Report | null>(null)
-  const [cardUrl, setCardUrl] = useState<string | null>(null) // 预合成的分享卡 blob URL
+  const [cardUrl, setCardUrl] = useState<string | null>(null)
   const [showCard, setShowCard] = useState(false)
   const [saved, setSaved] = useState(false)
   const requested = useRef(false)
@@ -26,7 +40,27 @@ export default function EndingReport() {
     () => computeTitle(ending, g.gameRank, { regret: g.regret, overridden: g.overridden }),
     [ending, g.gameRank, g.regret, g.overridden],
   )
-  const displayName = info?.name ?? DRIFTER_INFO.name
+
+  // 4 轴与类型代码；无叙事数据（运维直达）时回退本命代码
+  const { axes, typeCode } = useMemo(() => {
+    const r = computeAxes(g.stats)
+    const empty = Object.values(g.stats).every(v => v === 0)
+    return empty ? { axes: r.axes, typeCode: info.typeCode } : r
+  }, [g.stats, info.typeCode])
+
+  // 镜子没给你的人生：归一化第 2/3 高的维度对应职业
+  const altLives = useMemo(() => {
+    const order: [Stat, Career][] = [
+      ['guard', 'soldier'], ['create', 'painter'], ['swift', 'racer'],
+      ['rhythm', 'musician'], ['far', 'astronaut'],
+    ]
+    return order
+      .filter(([, c]) => c !== ending)
+      .map(([st, c]) => ({ c, score: g.stats[st] / Math.sqrt(MAX_REACH[st]) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 2)
+      .map(({ c }) => ({ name: CAREER_INFO[c].name, slogan: CAREER_INFO[c].slogan }))
+  }, [g.stats, ending])
 
   useEffect(() => {
     if (requested.current) return
@@ -37,13 +71,12 @@ export default function EndingReport() {
       path: g.path, gameScore: g.gameScore, gameDetail: g.gameDetail,
     }).then(r => {
       setReport(r)
-      // 上人生墙（展位排队预告位）
-      pushHall({ title, career: displayName, rank: g.gameRank ?? '—', score: g.gameScore })
+      pushHall({ title, career: info.name, rank: g.gameRank ?? '—', score: g.gameScore })
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 分享卡预合成：报告就绪即离屏渲染成 blob，点击时才能同步触发下载（保住用户激活态）
+  // 分享卡预合成（blob URL，点击时同步下载）
   const composeCard = (rep: Report): Promise<string> => new Promise(resolve => {
     const W = 1080, H = 1440
     const cv = document.createElement('canvas')
@@ -59,13 +92,19 @@ export default function EndingReport() {
       ctx.textAlign = 'center'
       ctx.fillStyle = '#c9a86a'
       ctx.font = '26px serif'
-      ctx.fillText('镜 像 自 我 · 人 生 预 演', W / 2, 130)
+      ctx.fillText('镜 像 自 我 · 人 生 预 演', W / 2, 118)
+      ctx.fillStyle = '#8fa8c8'
+      ctx.font = 'bold 30px monospace'
+      ctx.fillText(`TYPE ${typeCode}`, W / 2, 172)
       ctx.fillStyle = '#f4efe4'
       ctx.font = 'bold 92px serif'
-      ctx.fillText(displayName, W / 2, 300)
+      ctx.fillText(info.name, W / 2, 300)
       ctx.fillStyle = '#d8b878'
       ctx.font = '40px serif'
       ctx.fillText(`「${title}」`, W / 2, 390)
+      ctx.fillStyle = '#cfc9bb'
+      ctx.font = '26px serif'
+      ctx.fillText(info.slogan, W / 2, 446)
 
       // 双层金框
       ctx.strokeStyle = 'rgba(216,184,120,.7)'
@@ -74,10 +113,10 @@ export default function EndingReport() {
       ctx.lineWidth = 1
       ctx.strokeRect(50, 50, W - 100, H - 100)
 
-      // 评级印章（右上，微倾斜）
+      // 评级印章
       if (g.gameRank) {
         ctx.save()
-        ctx.translate(W - 165, 200)
+        ctx.translate(W - 165, 210)
         ctx.rotate(-0.12)
         ctx.strokeStyle = g.gameRank === 'S' ? '#ffd86a' : g.gameRank === 'A' ? '#8fd8ff' : '#b8c0cc'
         ctx.fillStyle = ctx.strokeStyle
@@ -92,25 +131,32 @@ export default function EndingReport() {
         ctx.textAlign = 'center'
       }
 
-      ctx.strokeStyle = 'rgba(201,168,106,.6)'
-      ctx.beginPath(); ctx.moveTo(W * 0.3, 480); ctx.lineTo(W * 0.7, 480); ctx.stroke()
+      // 4 轴微缩条（横排）
+      const barW = (W - 260) / 4, barY = 1210
+      axes.forEach((a, i) => {
+        const x = 130 + i * barW + 12
+        const w = barW - 24
+        ctx.fillStyle = 'rgba(255,255,255,.15)'
+        ctx.fillRect(x, barY, w, 8)
+        ctx.fillStyle = '#d8b878'
+        ctx.fillRect(x, barY, w * a.pct / 100, 8)
+        ctx.fillStyle = '#b8ac90'
+        ctx.font = '20px serif'
+        ctx.fillText(`${a.l} ${a.pct}%`, x + w / 2, barY + 34)
+      })
 
-      ctx.fillStyle = '#d8d2c4'
-      ctx.font = '30px serif'
-      wrapText(ctx, rep.paragraphs[2] ?? '', W / 2, 560, W * 0.74, 52)
       ctx.fillStyle = '#ece0c4'
-      ctx.font = 'italic 34px serif'
-      wrapText(ctx, `—— ${rep.finalWord}`, W / 2, 1130, W * 0.7, 56)
+      ctx.font = 'italic 32px serif'
+      wrapText(ctx, `—— ${rep.finalWord}`, W / 2, 1100, W * 0.7, 52)
 
       ctx.fillStyle = 'rgba(255,255,255,.4)'
       ctx.font = '22px sans-serif'
-      ctx.fillText('POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD', W / 2, H - 70)
+      ctx.fillText('POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD', W / 2, H - 68)
 
-      // blob URL 而非巨型 data URL：data URL 下载在部分环境会被静默拦截
       cv.toBlob(b => resolve(URL.createObjectURL(b!)), 'image/jpeg', 0.9)
     }
 
-    const src = career === 'painter' && g.graffitiData ? g.graffitiData : endStill
+    const src = ending === 'painter' && g.graffitiData ? g.graffitiData : endStill
     const img = new Image()
     img.onload = () => {
       const s = Math.max(W / img.width, H / img.height)
@@ -121,7 +167,6 @@ export default function EndingReport() {
     img.src = src
   })
 
-  // 报告就绪 → 预合成分享卡
   useEffect(() => {
     if (!report) return
     let alive = true
@@ -131,12 +176,11 @@ export default function EndingReport() {
   }, [report])
   useEffect(() => () => { if (cardUrl) URL.revokeObjectURL(cardUrl) }, [cardUrl])
 
-  // 点击：同步触发下载（anchor 挂进 DOM）+ 弹出预览浮层兜底
   const exportCard = () => {
     if (!cardUrl) return
     sfx.click()
     const a = document.createElement('a')
-    a.download = `人生预演_${displayName}_${title}.jpg`
+    a.download = `人生预演_${info.name}_${title}.jpg`
     a.href = cardUrl
     document.body.appendChild(a)
     a.click()
@@ -146,7 +190,7 @@ export default function EndingReport() {
     setTimeout(() => setSaved(false), 2500)
   }
 
-  const bg = career === 'painter' && g.graffitiData ? g.graffitiData : endStill
+  const bg = ending === 'painter' && g.graffitiData ? g.graffitiData : endStill
 
   return (
     <div className="report" data-testid="report">
@@ -155,8 +199,9 @@ export default function EndingReport() {
       }} />
       <div className="report-card">
         <div className="ai-tag">{report ? (report.fromAI ? 'RTX LOCAL AI' : 'OFFLINE MODE') : 'RTX LOCAL AI'}</div>
-        <div className="rk">人生预演报告 · LIFE REHEARSAL REPORT</div>
-        <h2>{displayName}的一生</h2>
+        <div className="rk">人生预演报告 · TYPE <span data-testid="type-code">{typeCode}</span></div>
+        <h2>{info.name}的一生</h2>
+        <div className="slogan">{info.slogan}</div>
         {report ? (
           <>
             <div className="honor" data-testid="honor">
@@ -171,7 +216,24 @@ export default function EndingReport() {
       </div>
       <div className="report-side">
         <FlowChart mode="final" />
-        <Radar />
+        <div className="axes-grid" data-testid="axes">
+          {axes.map(a => (
+            <div className="axis-card" key={a.name}>
+              <div className="ax-name">{a.name}</div>
+              <div className="ax-ends"><span>{a.l}</span><span>{a.r}</span></div>
+              <div className="ax-bar"><div className="ax-fill" style={{ width: `${a.pct}%` }} /></div>
+              <div className="ax-pct">{a.pct}% · {100 - a.pct}%</div>
+            </div>
+          ))}
+        </div>
+        {altLives.length > 0 && (
+          <div className="alt-lives" data-testid="alt-lives">
+            <div className="al-title">镜子没给你的人生</div>
+            {altLives.map(a => (
+              <div className="al-item" key={a.name}><b>{a.name}</b> —— {a.slogan}</div>
+            ))}
+          </div>
+        )}
         <div className="report-actions">
           <button className="primary" data-testid="save-card" onClick={exportCard} disabled={!cardUrl}>
             {saved ? '已保存 ✓' : cardUrl ? '保存分享卡' : '生成中…'}
@@ -188,47 +250,6 @@ export default function EndingReport() {
           <div className="share-tip">已开始下载 · 也可右键图片另存 · 点击任意处关闭</div>
         </div>
       )}
-    </div>
-  )
-}
-
-// 四维人格雷达：勇 / 彩 / 驰 / 定（坚定 = 顶住类选择的次数）
-function Radar() {
-  const g = useGame()
-  const firm = g.path.filter(p => ['D1', 'G1', 'E1'].includes(p.choiceId)).length
-  const dims = [
-    { label: '勇', v: g.stats.brave },
-    { label: '彩', v: g.stats.color },
-    { label: '驰', v: g.stats.speed },
-    { label: '定', v: firm * 1.6 },
-  ]
-  const max = Math.max(4, ...dims.map(d => d.v))
-  const C = 100, R = 74
-  const pt = (i: number, r: number) => {
-    const a = -Math.PI / 2 + (i * Math.PI * 2) / dims.length
-    return `${C + Math.cos(a) * r},${C + Math.sin(a) * r}`
-  }
-  const poly = dims.map((d, i) => pt(i, (Math.max(0.5, d.v) / max) * R)).join(' ')
-  return (
-    <div className="radar" data-testid="radar">
-      <svg viewBox="0 0 200 200">
-        {[0.33, 0.66, 1].map(k => (
-          <polygon key={k} points={dims.map((_, i) => pt(i, R * k)).join(' ')}
-                   fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="1" />
-        ))}
-        {dims.map((_, i) => (
-          <line key={i} x1={C} y1={C}
-                x2={pt(i, R).split(',')[0]} y2={pt(i, R).split(',')[1]}
-                stroke="rgba(255,255,255,.08)" strokeWidth="1" />
-        ))}
-        <polygon points={poly} fill="rgba(216,184,120,.22)" stroke="#d8b878" strokeWidth="1.6" />
-        {dims.map((d, i) => {
-          const [x, y] = pt(i, R + 15).split(',').map(Number)
-          return <text key={d.label} x={x} y={y + 4} textAnchor="middle" fontSize="13"
-                       fill="#cfc4a8" letterSpacing="2">{d.label}</text>
-        })}
-      </svg>
-      <div className="cap">人 格 倾 向</div>
     </div>
   )
 }

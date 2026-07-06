@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../store'
-import { NODES, CHAPTER_FLOW, Choice, Career, dominantCareer, isDrifter, CAREER_INFO } from '../story'
+import { NODES, CHAPTER_FLOW, Choice, Career, dominantEnding, CAREER_INFO } from '../story'
 import { useStill } from './useStill'
 import ParallaxStill from './ParallaxStill'
 import { sfx } from '../lib/audio'
@@ -114,10 +114,7 @@ export default function StoryScene() {
     if (node.id === 'E') {
       g().applyChoice({ nodeId: 'E', choiceId: c.id, choiceText: c.text })
       if (c.id === 'E1') {
-        const st = g()
-        // 无名者判定：犹豫太多或三值全平——镜子不给你任何一扇门
-        if (isDrifter(st.stats, st.timeouts)) g().chooseEnding('drifter', false)
-        else g().chooseEnding(dominantCareer(st.stats), false)
+        g().chooseEnding(dominantEnding(g().stats), false)
         g().setPhase('flowchart')
       } else {
         setBeat('doors')

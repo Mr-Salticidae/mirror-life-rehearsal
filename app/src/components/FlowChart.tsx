@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { useGame } from '../store'
-import { NODES, CHAPTER_FLOW, CAREER_INFO, Career, DRIFTER_INFO } from '../story'
+import { NODES, CHAPTER_FLOW, CAREER_INFO, Career } from '../story'
 import { sfx } from '../lib/audio'
 
 const GOLD = '#d8b878'
@@ -18,7 +18,6 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
 
   // interlude 模式：展示后自动推进
   const proceed = () => {
-    if (ending === 'drifter') { g().setPhase('report'); return } // 无名者没有职业可入，直达报告
     if (ending) { g().setPhase('career-intro'); return }
     const nextCh = CHAPTER_FLOW.findIndex(c => !c.nodes.every(n => doneNodes.has(n)))
     g().enterChapter(nextCh === -1 ? CHAPTER_FLOW.length - 1 : nextCh)
@@ -109,30 +108,25 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
         )
       })}
 
-      {/* 终点：三种人生 + 隐藏的无名者（常驻灰锁，勾人重玩） */}
+      {/* 终点：五种人生 */}
       {(ending || mode === 'final') && (
         <g>
-          {([...(Object.keys(CAREER_INFO) as Career[]), 'drifter'] as const).map((k, j) => {
-            const y = SPINE - 165 + j * 110
+          {(Object.keys(CAREER_INFO) as Career[]).map((k, j) => {
+            const y = SPINE - 190 + j * 95
             const x = W - 60
             const on = ending === k
-            const isDrift = k === 'drifter'
-            const label = isDrift ? (on ? DRIFTER_INFO.name : '？？？') : CAREER_INFO[k].name
             return (
-              <g key={k} opacity={isDrift && !on ? 0.6 : 1}>
+              <g key={k}>
                 <path d={`M ${nx(order.length - 1)} ${SPINE} C ${W - 150} ${SPINE}, ${W - 150} ${y}, ${x - 34} ${y}`}
                       fill="none" stroke={on ? GOLD : DIM} strokeWidth={on ? 2.5 : 1.2}
                       strokeDasharray={on ? 'none' : '4 5'} opacity={on ? 0.95 : 0.5} />
-                <rect x={x - 34} y={y - 16} width="68" height="32" rx="3"
+                <rect x={x - 34} y={y - 15} width="68" height="30" rx="3"
                       fill={on ? 'rgba(216,184,120,.16)' : '#11141c'}
                       stroke={on ? GOLD : DIM} strokeWidth={on ? 1.5 : 1} />
-                <text x={isDrift && !on ? x + 5 : x} y={y + 5} textAnchor="middle" fontSize="13"
+                <text x={x} y={y + 5} textAnchor="middle" fontSize="12.5"
                       fill={on ? '#f0e0b8' : DIM_TEXT} letterSpacing="2">
-                  {label}
+                  {CAREER_INFO[k].name}
                 </text>
-                {isDrift && !on && (
-                  <text x={x - 22} y={y + 4.5} textAnchor="middle" fontSize="10" fill={DIM_TEXT}>🔒</text>
-                )}
               </g>
             )
           })}

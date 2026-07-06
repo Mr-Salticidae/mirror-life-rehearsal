@@ -316,10 +316,27 @@ button { font-family: inherit; cursor: pointer; }
 .hall-item .hr b { color: #ffd86a; font-weight: 600; }
 @keyframes hallScroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
 
-/* ============ 人格雷达 ============ */
-.radar { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.radar svg { width: min(200px, 16vw); height: auto; }
-.radar .cap { font-size: 11px; letter-spacing: .4em; color: #8a94a8; }
+/* ============ GPTI 四轴 ============ */
+.axes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(34vw, 560px); }
+.axis-card { border: 1px solid rgba(255,255,255,.12); padding: 12px 14px 10px;
+  background: rgba(12,14,22,.55); }
+.axis-card .ax-name { font-size: 11px; letter-spacing: .3em; color: #c9a86a; margin-bottom: 8px; }
+.axis-card .ax-ends { display: flex; justify-content: space-between; font-size: 13px;
+  color: #e0d6c0; margin-bottom: 6px; }
+.axis-card .ax-bar { height: 6px; background: rgba(255,255,255,.12); overflow: hidden; }
+.axis-card .ax-fill { height: 100%; background: linear-gradient(90deg, #e8cf96, #c9a86a);
+  transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+.axis-card .ax-pct { font-size: 10.5px; color: #8a94a8; margin-top: 6px; letter-spacing: .12em; }
+
+/* 镜子没给你的人生 */
+.alt-lives { width: min(34vw, 560px); border-left: 2px solid #c9a86a55; padding: 4px 0 4px 14px; }
+.alt-lives .al-title { font-size: 11px; letter-spacing: .35em; color: #c9a86a; margin-bottom: 8px; }
+.alt-lives .al-item { font-size: 12.5px; line-height: 1.9; color: #b8ac90; letter-spacing: .06em; }
+.alt-lives .al-item b { color: #e0d6c0; font-weight: 600; }
+
+/* 报告卡 slogan */
+.report-card .slogan { font-size: 13px; letter-spacing: .12em; color: #9aa4b8;
+  margin-bottom: 14px; font-style: italic; }
 
 /* ============ 终幕报告 ============ */
 .report { position: absolute; inset: 0; z-index: 30; overflow: hidden;

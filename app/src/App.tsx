@@ -38,15 +38,16 @@ function useIdleReset() {
   }, [phase])
 }
 
-// 运维直达：?career=soldier|painter|racer 跳过叙事直进职业线（展位调试用）
+// 运维直达：?career=五职业之一 跳过叙事直进职业线（展位调试用）
+const CAREERS = ['soldier', 'painter', 'racer', 'musician', 'astronaut'] as const
 function useDevJump() {
   useEffect(() => {
     const c = new URLSearchParams(location.search).get('career')
-    if (c === 'soldier' || c === 'painter' || c === 'racer' || c === 'drifter') {
+    if ((CAREERS as readonly string[]).includes(c ?? '')) {
       const g = useGame.getState()
       g.start()
-      g.chooseEnding(c, false)
-      g.setPhase(c === 'drifter' ? 'report' : 'career-intro')
+      g.chooseEnding(c as (typeof CAREERS)[number], false)
+      g.setPhase('career-intro')
     }
   }, [])
 }
