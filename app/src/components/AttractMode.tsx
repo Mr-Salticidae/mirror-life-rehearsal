@@ -29,9 +29,9 @@ export default function AttractMode() {
       <button className="cta" data-testid="attract-start" onClick={go}>触 碰 开 始 预 演</button>
       <div className="rtx">POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD</div>
 
-      {hall.length > 0 && (
-        <div className="hall-wall" data-testid="hall-wall">
-          <h4>今 日 人 生 墙</h4>
+      <div className="hall-wall" data-testid="hall-wall">
+        <h4>今 日 人 生 墙</h4>
+        {hall.length > 0 ? (
           <div className="hall-list" style={scroll ? undefined : { animation: 'none' }}>
             {items.map((e, i) => (
               <div className="hall-item" key={i}>
@@ -40,8 +40,10 @@ export default function AttractMode() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="hall-empty">虚位以待 ——<br />成为今天第一个预演人生的人</div>
+        )}
+      </div>
     </div>
   )
 }

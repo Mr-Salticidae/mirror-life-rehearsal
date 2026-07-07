@@ -298,7 +298,12 @@ export default function EndingReport() {
         )}
       </div>
       <div className="report-side">
-        <FlowChart mode="final" />
+        {/* 直跳调试无叙事轨迹时隐藏全???矩阵，避免被当成 bug（QA D-06） */}
+        {g.path.length > 0 ? (
+          <FlowChart mode="final" />
+        ) : (
+          <div className="debug-note" data-testid="debug-note">调 试 直 达 · 无 叙 事 轨 迹</div>
+        )}
         <div className="axes-grid" data-testid="axes">
           {axes.map(a => (
             <div className="axis-card" key={a.name}>

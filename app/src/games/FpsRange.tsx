@@ -15,6 +15,7 @@ export default function FpsRange() {
   const [score, setScore] = useState(0)
   const [timeLeft, setTimeLeft] = useState(DURATION)
   const [locked, setLocked] = useState(false)
+  const [fallback, setFallback] = useState(false) // pointer lock 不可用时的无锁瞄准模式
   const [over, setOver] = useState<Rank | null>(null)
   const stats = useRef({ score: 0, hit: 0, head: 0, miss: 0, civ: 0, streak: 0, best: 0 })
   const startRef = useRef<number | null>(null)
@@ -122,23 +123,43 @@ export default function FpsRange() {
     mkTarget(false).life = Infinity
     mkTarget(true).life = Infinity
 
-    // 视角控制（pointer lock）
+    // 视角控制（pointer lock；不可用则降级为鼠标位置瞄准，防整线卡死——QA D-02）
     let yaw = 0, pitch = 0
+    const fallbackRef = { current: false }
     const onMove = (e: MouseEvent) => {
-      if (document.pointerLockElement !== renderer.domElement) return
-      yaw -= e.movementX * 0.0022
-      pitch -= e.movementY * 0.0022
+      if (document.pointerLockElement === renderer.domElement) {
+        yaw -= e.movementX * 0.0022
+        pitch -= e.movementY * 0.0022
+      } else if (fallbackRef.current) {
+        // 无锁模式：屏幕位置直接映射视角（中心=正前方）
+        yaw = -(e.clientX / innerWidth - 0.5) * 2.2
+        pitch = -(e.clientY / innerHeight - 0.5) * 1.2
+      } else return
       pitch = Math.max(-0.6, Math.min(0.6, pitch))
       yaw = Math.max(-1.1, Math.min(1.1, yaw))
+    }
+    const enableFallback = () => {
+      if (fallbackRef.current) return
+      fallbackRef.current = true
+      setFallback(true)
+      if (startRef.current === null) startRef.current = performance.now()
     }
     const onLockChange = () => {
       const isLocked = document.pointerLockElement === renderer.domElement
       setLocked(isLocked)
       if (isLocked && startRef.current === null) startRef.current = performance.now() // 首次锁定才开始计时
     }
+    const onLockError = () => enableFallback()
     document.addEventListener('mousemove', onMove)
     document.addEventListener('pointerlockchange', onLockChange)
-    const requestLock = () => renderer.domElement.requestPointerLock()
+    document.addEventListener('pointerlockerror', onLockError)
+    const requestLock = () => {
+      try {
+        // 现代浏览器返回 Promise，拒绝即降级；老浏览器走 pointerlockerror 事件
+        const p = renderer.domElement.requestPointerLock() as unknown as Promise<void> | undefined
+        if (p && typeof p.catch === 'function') p.catch(enableFallback)
+      } catch { enableFallback() }
+    }
     renderer.domElement.addEventListener('click', requestLock)
 
     // 射击
@@ -147,7 +168,7 @@ export default function FpsRange() {
     muzzle.position.set(0.3, 1.5, -1); camera.add(muzzle); scene.add(camera)
     const shoot = () => {
       if (endedRef.current) return
-      if (document.pointerLockElement !== renderer.domElement) return
+      if (document.pointerLockElement !== renderer.domElement && !fallbackRef.current) return
       sfx.shot()
       muzzle.intensity = 30
       setTimeout(() => { muzzle.intensity = 0 }, 60)
@@ -249,6 +270,7 @@ export default function FpsRange() {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mousedown', shoot)
       document.removeEventListener('pointerlockchange', onLockChange)
+      document.removeEventListener('pointerlockerror', onLockError)
       window.removeEventListener('resize', onResize)
       if (document.pointerLockElement) document.exitPointerLock()
       renderer.dispose()
@@ -273,10 +295,17 @@ export default function FpsRange() {
       {locked && !over && timeLeft <= 28 && timeLeft > 23 && (
         <div className="surge-banner">人 群 涌 入 靶 区 —— 看 清 再 开 枪</div>
       )}
-      {!locked && !over && (
+      {!locked && !fallback && !over && (
         <div className="game-overlay-msg" style={{ pointerEvents: 'none' }}>
           <div className="big">守 夜</div>
           <div className="game-hint">点击画面锁定视角 · 红色标靶射击（打头×2）· 白色平民勿伤</div>
+          {/* 兜底出口：视角锁定不可用/不想玩时不至于卡死整条线（QA D-02） */}
+          <button
+            className="skip-game" data-testid="skip-fps" style={{ pointerEvents: 'auto' }}
+            onClick={e => { e.stopPropagation(); sfx.click(); finishGame(0, '完成了一夜坚守', 'B') }}
+          >
+            跳 过 考 核 ▸
+          </button>
         </div>
       )}
       {over && <RankSplash rank={over} title="考 核 结 束" sub={`得分 ${score}`} />}

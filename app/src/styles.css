@@ -274,6 +274,10 @@ button { font-family: inherit; cursor: pointer; }
 .game-overlay-msg { position: absolute; inset: 0; z-index: 32; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 3vh; background: rgba(0,0,0,.66); }
 .game-overlay-msg .big { font-size: clamp(26px, 3.4vw, 48px); letter-spacing: .4em; text-indent: .4em; }
+/* 游戏兜底出口（低调，不与主 CTA 抢视线） */
+.skip-game { margin-top: 1vh; font-size: 12px; letter-spacing: .4em; color: #ffffff66;
+  background: none; border: 1px solid rgba(255,255,255,.25); padding: 10px 26px; transition: all .25s; }
+.skip-game:hover { color: #f0e0b8; border-color: #d8b878; }
 
 /* 涂鸦 */
 .graffiti-tools { position: absolute; bottom: 8.5vh; left: 0; right: 0; z-index: 30;
@@ -343,6 +347,12 @@ button { font-family: inherit; cursor: pointer; }
 .hall-item .hr { font-size: 11px; letter-spacing: .15em; color: #8fa8c8; }
 .hall-item .hr b { color: #ffd86a; font-weight: 600; }
 @keyframes hallScroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+.hall-empty { font-size: 12px; line-height: 2.1; letter-spacing: .18em; color: #8a94a8;
+  text-align: center; border: 1px dashed rgba(255,255,255,.14); padding: 22px 14px; }
+
+/* 直跳调试占位（报告页） */
+.debug-note { font-size: 11px; letter-spacing: .4em; color: #5a5f6e;
+  border: 1px dashed rgba(255,255,255,.15); padding: 14px 20px; }
 
 /* ============ GPTI 四轴 ============ */
 .axes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(34vw, 560px); }
