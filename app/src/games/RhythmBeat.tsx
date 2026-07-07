@@ -4,9 +4,10 @@ import { rankOf } from '../lib/titles'
 import RankSplash from '../components/RankSplash'
 import { sfx } from '../lib/audio'
 
-// 音乐人《躁动》：4 轨下落节奏，D F J K 或点击轨道接拍，60s
-// 命中 +1（连击 10/25/50 → ×2/×4/×8 倍率计入总分展示），评级按命中率；S 另需最大连击 ≥60
-const DURATION = 60
+// 音乐人《躁动》：4 轨下落节奏，D F J K 或点击轨道接拍，20s（展会节奏，主导定）
+// 命中 +1（连击 8/15/30 → ×2/×4/×8 倍率计入总分展示），评级按命中率；S 另需最大连击 ≥36
+// （20s 谱面约 50+ 拍，连击档位与 S 门槛按原 60s 版比例缩放）
+const DURATION = 20
 const BPM = 112
 const LANES = 4
 const KEYS = ['d', 'f', 'j', 'k']
@@ -139,16 +140,16 @@ export default function RhythmBeat() {
         st.hits++
         st.combo++
         st.maxCombo = Math.max(st.maxCombo, st.combo)
-        const mult = st.combo >= 50 ? 8 : st.combo >= 25 ? 4 : st.combo >= 10 ? 2 : 1
+        const mult = st.combo >= 30 ? 8 : st.combo >= 15 ? 4 : st.combo >= 8 ? 2 : 1
         st.score += mult
         st.pulse = 1
         // 二段高潮：升档瞬间全屏炸亮；×8 段位每次命中都放光环
-        if (st.combo === 25 || st.combo === 50) {
+        if (st.combo === 15 || st.combo === 30) {
           st.pulse = 2.6
           st.flash = [1, 1, 1, 1]
           sfx.nitro()
         }
-        if (st.combo >= 50) {
+        if (st.combo >= 30) {
           bursts.push({ x: x0 + lane * laneW + laneW / 2, y: judgeY, r: 12, life: 1 })
         }
         sfx.hit()
@@ -261,7 +262,7 @@ export default function RhythmBeat() {
         const total = notes.length
         const rate = Math.round((st.hits / total) * 100)
         let rank = rankOf('rhythm', rate)
-        if (rank === 'S' && st.maxCombo < 60) rank = 'A' // S 双门槛：命中率 + 连击
+        if (rank === 'S' && st.maxCombo < 36) rank = 'A' // S 双门槛：命中率 + 连击
         setOver({ rank, rate })
         sfx.confirm()
         setTimeout(() => finishGame(rate,

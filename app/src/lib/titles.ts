@@ -20,14 +20,14 @@ export function computeTitle(
   return base
 }
 
-// 各游戏评级阈值
+// 各游戏评级阈值（20s 版：fps/race/graffiti 按时长比例自原 60/90s 版缩放，纸面值待真人彩排校准）
 export function rankOf(game: 'fps' | 'graffiti' | 'race' | 'rhythm' | 'dock', score: number): Rank {
   const t = {
-    fps: { S: 140, A: 70 },
-    graffiti: { S: 10, A: 4 },    // 覆盖率百分比
-    race: { S: 1650, A: 1350 },   // 米
-    rhythm: { S: 90, A: 70 },     // 命中率百分比（S 另要求连击，见游戏内判定）
-    dock: { S: 85, A: 60 },       // 对接综合分
+    fps: { S: 50, A: 25 },        // 原 60s 版 140/70
+    graffiti: { S: 4, A: 2 },     // 覆盖率百分比（原 90s 版 10/4）
+    race: { S: 950, A: 800 },     // 米（实测零操作≈730m 定 B 上界；躲撞+氮气的熟练上限 ~1050m）
+    rhythm: { S: 90, A: 70 },     // 命中率百分比（S 另要求连击 ≥36，见游戏内判定）
+    dock: { S: 85, A: 60 },       // 对接综合分（60m 进近燃耗更省，S 略易，待彩排回调）
   }[game]
   return score >= t.S ? 'S' : score >= t.A ? 'A' : 'B'
 }

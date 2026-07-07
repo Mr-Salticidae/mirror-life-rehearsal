@@ -8,12 +8,14 @@ import { sfx } from '../lib/audio'
 // 宇航员《失重》：一维进近对接。← →/A D 微调推力，空格强制动（更耗燃料）。
 // 对接窗口：距离 ≤6m 且 |相对速度| ≤1.2m/s，保持 3s = 成功；触碰(距离<0)=碰撞反弹。
 // 评级：综合分 = 成功40 + 燃料%×0.6；S ≥85 且零碰撞；未对接超时 = B。
-const DURATION = 90
+// 20s 版（展会节奏，主导定）：初始距离 120→60m，容下"滑行-制动-保持3s"全弧线且留失误余量
+const DURATION = 20
+const INIT_DIST = 60
 
 export default function Docking() {
   const mountRef = useRef<HTMLDivElement>(null)
   const finishGame = useGame(s => s.finishGame)
-  const [hud, setHud] = useState({ dist: 120, vel: 8, fuel: 100, hold: 0 })
+  const [hud, setHud] = useState({ dist: INIT_DIST, vel: 8, fuel: 100, hold: 0 })
   const [timeLeft, setTimeLeft] = useState(DURATION)
   const [over, setOver] = useState<{ rank: Rank; ok: boolean } | null>(null)
   const [ptrHint, setPtrHint] = useState<'retro' | 'brake' | 'accel' | null>(null)
@@ -95,7 +97,7 @@ export default function Docking() {
     scene.add(station)
 
     // 状态
-    const st = { dist: 120, vel: 8, fuel: 100, hold: 0, corrections: 0, collisions: 0, docked: false, wobble: 0 }
+    const st = { dist: INIT_DIST, vel: 8, fuel: 100, hold: 0, corrections: 0, collisions: 0, docked: false, wobble: 0 }
     const keys = { retro: false, accel: false, brake: false }
     const onDown = (e: KeyboardEvent) => {
       // 修正计数 = 推进键按下沿（长按不重复计）
@@ -259,7 +261,7 @@ export default function Docking() {
           对接窗口 · 保持 {Math.max(0, 3 - hud.hold).toFixed(1)}s
         </div>
       )}
-      {hud.dist >= 118 && !over && (
+      {hud.dist >= INIT_DIST - 2 && !over && (
         <div className="game-overlay-msg" style={{ pointerEvents: 'none', background: 'rgba(0,0,0,.5)' }}>
           <div className="big">失 重</div>
           <div className="game-hint">← 减速 · → 加速 · 空格强制动（或按住屏幕 左/中/右）</div>

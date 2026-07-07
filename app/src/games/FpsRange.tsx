@@ -6,9 +6,10 @@ import { loadModel } from '../lib/models'
 import RankSplash from '../components/RankSplash'
 import { sfx } from '../lib/audio'
 
-// 军人《守夜》：夜间靶场，鼠标视角+点击射击，60s
+// 军人《守夜》：夜间靶场，鼠标视角+点击射击，20s（展会节奏，主导定）
 // 红色标靶 +10（爆头 ×2）；白色平民靶 -15；连中有 streak 加成
-const DURATION = 60
+const DURATION = 20
+const SURGE_AT = 11 // 二段高潮起点（原 60s 版为 32s，按比例保持"过半后混入"的节拍）
 
 export default function FpsRange() {
   const mountRef = useRef<HTMLDivElement>(null)
@@ -274,14 +275,14 @@ export default function FpsRange() {
       const left = Math.max(0, DURATION - elapsed)
       setTimeLeft(Math.ceil(left))
 
-      // 生成靶子：随时间加速；二段高潮（32s 起）平民大量混入，逼玩家看清再开枪
+      // 生成靶子：随时间加速；二段高潮（SURGE_AT 起）平民大量混入，逼玩家看清再开枪
       if (started) {
-        if (elapsed > 32 && !surged) { surged = true; sfx.heartbeat() }
+        if (elapsed > SURGE_AT && !surged) { surged = true; sfx.heartbeat() }
         spawnAcc += dt
-        const interval = Math.max(520, 1150 - elapsed * 10)
+        const interval = Math.max(520, 1150 - elapsed * 30)
         if (spawnAcc > interval && targets.filter(t => !t.dead).length < 6) {
           spawnAcc = 0
-          mkTarget(Math.random() < (elapsed > 32 ? 0.48 : 0.28))
+          mkTarget(Math.random() < (elapsed > SURGE_AT ? 0.48 : 0.28))
         }
       }
       // 靶子生命周期
@@ -359,8 +360,8 @@ export default function FpsRange() {
         <span>剩余 <b>{timeLeft}s</b></span>
       </div>
       <div className="crosshair" />
-      {/* 二段高潮警告：32s 起平民混入（timeLeft 60→28 为触发点，横幅显示约 5s） */}
-      {locked && !over && timeLeft <= 28 && timeLeft > 23 && (
+      {/* 二段高潮警告：SURGE_AT(11s) 起平民混入（timeLeft 20→9 为触发点，横幅显示约 5s） */}
+      {locked && !over && timeLeft <= DURATION - SURGE_AT && timeLeft > DURATION - SURGE_AT - 5 && (
         <div className="surge-banner">人 群 涌 入 靶 区 —— 看 清 再 开 枪</div>
       )}
       {!locked && !fallback && !over && (

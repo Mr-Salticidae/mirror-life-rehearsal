@@ -9,8 +9,8 @@ import { sfx } from '../lib/audio'
 // 车流模型池（Kenney Car Kit，载入前用程序化盒车兜底）
 const TRAFFIC_MODELS = ['sedan', 'taxi', 'van', 'suv', 'police', 'delivery', 'hatchback-sports']
 
-// 赛车手《夜环线》：雨夜三车道，←→/AD 变道躲车流，蓝色氮气加速，60s 距离计分
-const DURATION = 60
+// 赛车手《夜环线》：雨夜三车道，←→/AD 变道躲车流，蓝色氮气加速，20s 距离计分（展会节奏，主导定）
+const DURATION = 20
 const LANES = [-3.2, 0, 3.2]
 
 export default function NightDrive() {
@@ -227,7 +227,7 @@ export default function NightDrive() {
       const dt = slowmo ? realDt * 0.35 : realDt
 
       // 速度：基础提速 + 氮气
-      const base = 26 + elapsed * 0.5
+      const base = 26 + elapsed * 1.5 // 提速斜率按 20s 版放大（原 60s 版 0.5/s，保持终速一致的速度弧线）
       state.nitro = Math.max(0, state.nitro - dt)
       const speed = base * (state.nitro > 0 ? 1.65 : 1)
       state.speed += (speed - state.speed) * dt * 3
