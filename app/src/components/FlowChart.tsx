@@ -130,14 +130,13 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
                   )}
                   {isTaken
                     ? <circle cx={cx} cy={cy} r="5.5" fill={GOLD} />
-                    : <g>
-                        <circle cx={cx} cy={cy} r="5.5" fill="#11141c" stroke={DIM} strokeWidth="1.5" />
-                        <text x={cx} y={cy + 3.6} textAnchor="middle" fontSize="8" fill={DIM_TEXT}>?</text>
-                      </g>}
-                  <text className="fc-choice-label" x={cx + 12} y={cy + 4}
-                        fill={known ? '#cfc4a8' : DIM_TEXT}>
-                    {known ? c.text : '？？？'}
-                  </text>
+                    : <circle cx={cx} cy={cy} r="5.5" fill="#11141c" stroke={DIM} strokeWidth="1.5" />}
+                  {/* 未走分支不再标「？？？」（同事反馈）：虚线+空心点已足够暗示岔路，画面留白 */}
+                  {known && (
+                    <text className="fc-choice-label" x={cx + 12} y={cy + 4} fill="#cfc4a8">
+                      {c.text}
+                    </text>
+                  )}
                 </g>
               )
             })}

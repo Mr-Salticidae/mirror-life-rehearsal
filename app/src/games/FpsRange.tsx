@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useGame, Rank } from '../store'
 import { rankOf } from '../lib/titles'
+import { loadModel } from '../lib/models'
 import RankSplash from '../components/RankSplash'
 import { sfx } from '../lib/audio'
 
@@ -200,15 +201,39 @@ export default function FpsRange() {
     }
     renderer.domElement.addEventListener('click', requestLock)
 
+    // 持枪视图（同事手枪模型，scripts/fbx2glb.mjs 清洗产物）：挂相机右下，射击带后座
+    // 载入前/失败时保持无枪现状，射击判定不受影响（射线只认靶板）
+    const gunGrp = new THREE.Group()
+    gunGrp.position.set(0.26, -0.2, -0.58)
+    camera.add(gunGrp)
+    let gunKick = 0
+    loadModel('models/props/pistol.glb').then(m => {
+      if (!m) return
+      const gun = m.clone(true)
+      gun.rotation.y = Math.PI / 2 + 0.42 // GLB 枪口朝 +x，转向前方(-z)再内倾——2.5D 挤出模型靠侧影认形，斜持让轮廓可读
+      gun.rotation.z = -0.52 // 原模型在展示场景里斜摆（枪管上翘约30°），滚转校平
+      gun.scale.setScalar(0.42)
+      gun.traverse(o => {
+        const mesh = o as THREE.Mesh
+        if (!mesh.isMesh) return
+        for (const mm of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+          const std = mm as THREE.MeshStandardMaterial
+          if (std.emissive) std.emissive.set(0x10121a) // 夜景里近黑枪身提一点轮廓光
+        }
+      })
+      gunGrp.add(gun)
+    })
+
     // 射击
     const ray = new THREE.Raycaster()
     const muzzle = new THREE.PointLight(0xffcc88, 0, 8)
-    muzzle.position.set(0.3, 1.5, -1); camera.add(muzzle); scene.add(camera)
+    muzzle.position.set(0.3, -0.12, -1.15); camera.add(muzzle); scene.add(camera)
     const shoot = () => {
       if (endedRef.current) return
       if (document.pointerLockElement !== renderer.domElement && !fallbackRef.current) return
       sfx.shot()
       muzzle.intensity = 30
+      gunKick = 1
       setTimeout(() => { muzzle.intensity = 0 }, 60)
       ray.setFromCamera(new THREE.Vector2(0, 0), camera)
       const alive = targets.filter(t => !t.dead)
@@ -281,6 +306,10 @@ export default function FpsRange() {
       p.needsUpdate = true
 
       camera.rotation.set(pitch, yaw, 0, 'YXZ')
+      // 枪的后座回弹：击发瞬间后撤上跳，~130ms 归位
+      gunGrp.position.z = -0.58 + gunKick * 0.07
+      gunGrp.rotation.x = gunKick * 0.12
+      gunKick = Math.max(0, gunKick - dt * 0.008)
 
       if (started && left <= 0 && !endedRef.current) {
         endedRef.current = true

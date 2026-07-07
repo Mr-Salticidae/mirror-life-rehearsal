@@ -179,11 +179,15 @@ export default function EndingReport() {
         ctx.fillText(a.name, x + w / 2, barY - 18)
         ctx.fillStyle = 'rgba(255,255,255,.15)'
         ctx.fillRect(x, barY, w, 8)
+        // 金条锚定优势侧，标签写优势项（同事反馈：占比高的展示出来）
+        const domL = a.pct >= 50
+        const dp = domL ? a.pct : 100 - a.pct
+        const fw = w * dp / 100
         ctx.fillStyle = '#d8b878'
-        ctx.fillRect(x, barY, w * a.pct / 100, 8)
+        ctx.fillRect(domL ? x : x + w - fw, barY, fw, 8)
         ctx.fillStyle = '#b8ac90'
         ctx.font = '20px serif'
-        ctx.fillText(`${a.l} ${a.pct}%`, x + w / 2, barY + 36)
+        ctx.fillText(`${domL ? a.l : a.r} ${dp}%`, x + w / 2, barY + 36)
       })
 
       // 给现实的你（结语，避开右下二维码位收窄行宽）
@@ -305,14 +309,28 @@ export default function EndingReport() {
           <div className="debug-note" data-testid="debug-note">调 试 直 达 · 无 叙 事 轨 迹</div>
         )}
         <div className="axes-grid" data-testid="axes">
-          {axes.map(a => (
-            <div className="axis-card" key={a.name}>
-              <div className="ax-name">{a.name}</div>
-              <div className="ax-ends"><span>{a.l}</span><span>{a.r}</span></div>
-              <div className="ax-bar"><div className="ax-fill" style={{ width: `${a.pct}%` }} /></div>
-              <div className="ax-pct">{a.pct}% · {100 - a.pct}%</div>
-            </div>
-          ))}
+          {axes.map(a => {
+            // 占比高的一侧才是这条轴的"结论"（同事反馈）：金条锚定优势侧，优势端字符/数字高亮
+            const domL = a.pct >= 50
+            return (
+              <div className="axis-card" key={a.name}>
+                <div className="ax-name">{a.name}</div>
+                <div className="ax-ends">
+                  <span className={domL ? 'dom' : ''}>{a.l}</span>
+                  <span className={domL ? '' : 'dom'}>{a.r}</span>
+                </div>
+                <div className="ax-bar">
+                  <div className={`ax-fill${domL ? '' : ' right'}`}
+                       style={{ width: `${domL ? a.pct : 100 - a.pct}%` }} />
+                </div>
+                <div className="ax-pct">
+                  <span className={domL ? 'dom' : ''}>{a.pct}%</span>
+                  {' · '}
+                  <span className={domL ? '' : 'dom'}>{100 - a.pct}%</span>
+                </div>
+              </div>
+            )
+          })}
         </div>
         {altLives.length > 0 && (
           <div className="alt-lives" data-testid="alt-lives">

@@ -154,7 +154,7 @@ export const NODES: Record<string, StoryNode> = {
       { id: 'B2', text: '"我要开最快的车"', sub: '一行字，笔画很用力', effect: { swift: 1 },
         consequence: '同桌笑了。你没笑。' },
       { id: 'B3', text: '"我要保护别人"', sub: '字写得方方正正', effect: { guard: 1 },
-        consequence: '这五个字后来你又写过一次，在一张志愿表上。' },
+        consequence: '这六个字后来你又写过一次，在一张志愿表上。' },
     ],
     next: 'F',
   },

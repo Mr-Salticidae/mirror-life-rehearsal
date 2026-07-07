@@ -360,11 +360,15 @@ button { font-family: inherit; cursor: pointer; }
   background: rgba(12,14,22,.55); }
 .axis-card .ax-name { font-size: 11px; letter-spacing: .3em; color: #c9a86a; margin-bottom: 8px; }
 .axis-card .ax-ends { display: flex; justify-content: space-between; font-size: 13px;
-  color: #e0d6c0; margin-bottom: 6px; }
+  color: #6a7186; margin-bottom: 6px; }
+.axis-card .ax-ends .dom { color: #f0dfb2; font-weight: 700; font-size: 15px;
+  text-shadow: 0 0 10px rgba(216,184,120,.45); }
 .axis-card .ax-bar { height: 6px; background: rgba(255,255,255,.12); overflow: hidden; }
 .axis-card .ax-fill { height: 100%; background: linear-gradient(90deg, #e8cf96, #c9a86a);
   transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+.axis-card .ax-fill.right { margin-left: auto; background: linear-gradient(270deg, #e8cf96, #c9a86a); }
 .axis-card .ax-pct { font-size: 10.5px; color: #8a94a8; margin-top: 6px; letter-spacing: .12em; }
+.axis-card .ax-pct .dom { color: #d8b878; font-weight: 700; }
 
 /* 镜子没给你的人生 */
 .alt-lives { width: min(34vw, 560px); border-left: 2px solid #c9a86a55; padding: 4px 0 4px 14px; }
