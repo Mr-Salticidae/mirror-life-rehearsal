@@ -217,6 +217,11 @@ button { font-family: inherit; cursor: pointer; }
   transition: all .3s; animation: pulseSoft 2.4s ease-in-out infinite; }
 .attract .cta:hover { border-color: #d8b878; color: #f0e0b8; box-shadow: 0 0 40px rgba(216,184,120,.25); }
 .attract .rtx { position: absolute; bottom: 4vh; font-size: 11px; letter-spacing: .45em; color: #ffffff44; }
+/* 断网徽标（拔网线时刻）：离线时才出现，绿点呼吸强调"本地独立运行" */
+.attract .offline-badge { position: absolute; bottom: 8.5vh; font-size: 11px; letter-spacing: .3em;
+  color: #76ff9e; border: 1px solid #76ff9e55; padding: 6px 14px; border-radius: 2px;
+  animation: offlinePulse 2.4s ease-in-out infinite; }
+@keyframes offlinePulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 
 /* ============ 序幕：镜子 ============ */
 .prologue { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column;
@@ -404,6 +409,10 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 15px; }
 .report-card .ai-tag { position: absolute; top: 20px; right: 22px; font-size: 10px;
   letter-spacing: .3em; color: #5f88b8; border: 1px solid #35507288; padding: 5px 10px; }
+/* 本地推理遥测行：真实生成数据（模型/字数/耗时/字每秒），展台算力可见化 */
+.report-card .ai-stats { position: absolute; top: 52px; right: 22px; font-size: 10px;
+  letter-spacing: .08em; color: #4a6a92; }
+.report-card .ai-stats b { color: #76ff9e; font-weight: 600; }
 /* position:relative 让侧栏叠在绝对定位的剧照背景层之上——否则按钮看得见点不到 */
 .report-side { display: flex; flex-direction: column; gap: 3.5vh; align-items: center; max-width: 34vw;
   position: relative; }

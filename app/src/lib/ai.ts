@@ -18,6 +18,15 @@ export interface Report {
   paragraphs: string[] // 三段人生叙事
   finalWord: string    // 给现实的你
   fromAI: boolean
+  stats?: AiStats      // 真实推理遥测（仅 fromAI 时有）——展台"本地算力可见化"用
+}
+
+// 全部来自真实生成过程的可验证数据；按"字/秒"计（token 数端点不回传，不做估算不编数字）
+export interface AiStats {
+  model: string
+  chars: number      // 生成总字数
+  seconds: number    // 首字到完稿耗时
+  charsPerSec: number
 }
 
 interface AiConfig { baseUrl: string; model: string; apiKey?: string; timeoutMs?: number }
@@ -82,6 +91,7 @@ export async function generateReport(input: ReportInput, onText?: (t: string) =>
     const reader = res.body.getReader()
     const dec = new TextDecoder()
     let acc = '', buf = ''
+    let firstAt = 0 // 首字时间戳——遥测从首字起算（排除排队/预填充，量的是生成吞吐）
     for (;;) {
       const { done, value } = await reader.read()
       if (done) break
@@ -96,14 +106,22 @@ export async function generateReport(input: ReportInput, onText?: (t: string) =>
         if (payload === '[DONE]') continue
         try {
           const delta: string = JSON.parse(payload).choices?.[0]?.delta?.content ?? ''
-          if (delta) { acc += delta; onText?.(acc) }
+          if (delta) {
+            if (!firstAt) firstAt = performance.now()
+            acc += delta; onText?.(acc)
+          }
         } catch { /* SSE 半包，等下一块 */ }
       }
     }
     clearTimeout(stall)
     const parsed = parsePlain(acc)
     if (!parsed) throw new Error('bad shape')
-    return { ...parsed, fromAI: true }
+    const seconds = firstAt ? Math.max(0.1, (performance.now() - firstAt) / 1000) : 0.1
+    const stats: AiStats = {
+      model: cfg.model, chars: acc.length, seconds,
+      charsPerSec: Math.round(acc.length / seconds),
+    }
+    return { ...parsed, fromAI: true, stats }
   } catch (e) {
     console.warn('[ai] 本地端点不可用，走模板兜底', e)
     const t = templateReport(input)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useGame } from '../store'
 import { todayHall } from '../lib/hall'
 import Dust from './Dust'
@@ -7,6 +7,15 @@ import { sfx, startBgm } from '../lib/audio'
 export default function AttractMode() {
   const start = useGame(s => s.start)
   const go = () => { startBgm(); sfx.confirm(); start() }
+
+  // 断网徽标（展台"拔网线时刻"）：离线时亮出——本地 AI 不依赖网络的现场证明
+  const [offline, setOffline] = useState(!navigator.onLine)
+  useEffect(() => {
+    const on = () => setOffline(false), off = () => setOffline(true)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
+  }, [])
 
   useEffect(() => {
     const onKey = () => go()
@@ -28,6 +37,11 @@ export default function AttractMode() {
       <div className="sub">人 生 预 演</div>
       <button className="cta" data-testid="attract-start" onClick={go}>触 碰 开 始 预 演</button>
       <div className="rtx">POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD</div>
+      {offline && (
+        <div className="offline-badge" data-testid="offline-badge">
+          ⬤ 已 离 线 · 本 地 A I 独 立 运 行 中
+        </div>
+      )}
 
       <div className="hall-wall" data-testid="hall-wall">
         <h4>今 日 人 生 墙</h4>

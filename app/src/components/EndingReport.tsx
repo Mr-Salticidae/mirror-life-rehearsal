@@ -307,6 +307,13 @@ export default function EndingReport() {
       }} />
       <div className="report-card">
         <div className="ai-tag">{report ? (report.fromAI ? 'RTX LOCAL AI' : 'OFFLINE MODE') : 'RTX LOCAL AI'}</div>
+        {/* 本地推理遥测（展台"算力可见化"）：全部来自真实生成过程，字/秒实测不估算 */}
+        {report?.fromAI && report.stats && (
+          <div className="ai-stats" data-testid="ai-stats">
+            {report.stats.model} · 本地生成 {report.stats.chars} 字 / {report.stats.seconds.toFixed(1)}s
+            · <b>{report.stats.charsPerSec} 字/秒</b> · 零云端请求
+          </div>
+        )}
         <div className="rk">人生预演报告 · TYPE <span data-testid="type-code">{typeCode}</span></div>
         <h2>{flavor ? flavor.label : ''}{info.name}的一生</h2>
         <div className="slogan">{info.slogan}</div>
