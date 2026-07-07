@@ -7,8 +7,9 @@ export default function ParallaxStill({ url, dim }: { url: string; dim?: boolean
     const onMove = (e: PointerEvent) => {
       const el = ref.current
       if (!el) return
-      const dx = (e.clientX / innerWidth - 0.5) * -18
-      const dy = (e.clientY / innerHeight - 0.5) * -10
+      // 幅度与 .scene-still 的 -3.5% 过扫描边距匹配，避免视差拖出黑边
+      const dx = (e.clientX / innerWidth - 0.5) * -12
+      const dy = (e.clientY / innerHeight - 0.5) * -7
       el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
     }
     window.addEventListener('pointermove', onMove, { passive: true })
