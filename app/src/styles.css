@@ -59,6 +59,9 @@ button { font-family: inherit; cursor: pointer; }
 
 .scene-fade { animation: sceneIn 1.6s ease both; }
 @keyframes sceneIn { from { opacity: 0; } to { opacity: 1; } }
+/* 谢幕：整幕渐隐到纯黑再切下一场（同 animation 属性覆盖 sceneIn） */
+.scene.scene-out { animation: sceneOut .9s ease both; }
+@keyframes sceneOut { from { opacity: 1; } to { opacity: 0; } }
 
 /* 节点切换光扫：一束斜光划过画面 */
 .light-sweep { position: absolute; inset: 0; z-index: 14; pointer-events: none; overflow: hidden; }

@@ -10,6 +10,7 @@ type Beat = 'lines' | 'choices' | 'doors' | 'consequence'
 const CONSEQUENCE_MS = 2600
 const AUTO_ADVANCE_MS = 1700
 const HOLD_MS = 1000
+const FADE_OUT_MS = 900 // 谢幕渐黑时长，与 .scene-out 动画一致
 
 export default function StoryScene() {
   const nodeId = useGame(s => s.nodeId)
@@ -23,6 +24,7 @@ export default function StoryScene() {
   const [timeLeft, setTimeLeft] = useState(node.timer ?? 0)
   const [holdPct, setHoldPct] = useState(0) // 长按选择进度
   const [holdHint, setHoldHint] = useState(false) // 短按提示：这张卡要按住
+  const [fading, setFading] = useState(false) // 谢幕渐黑中
 
   // 回响台词：匹配早前选择后追加
   const lines = useMemo(() => {
@@ -44,6 +46,7 @@ export default function StoryScene() {
   useEffect(() => {
     setBeat('lines'); setLineIdx(0); setTyped(0)
     setConsequence(''); setTimeLeft(node.timer ?? 0); setHoldPct(0)
+    setFading(false)
     settled.current = false
   }, [nodeId])
 
@@ -98,12 +101,18 @@ export default function StoryScene() {
     g().setPhase('flowchart')
   }
 
+  // 谢幕渐黑后再执行切场，避免硬切
+  const fadeOutThen = (after: () => void) => {
+    setFading(true)
+    setTimeout(after, FADE_OUT_MS)
+  }
+
   const showConsequence = (text: string) => {
-    if (!text) { finishNode(); return }
+    if (!text) { fadeOutThen(finishNode); return }
     setConsequence(text)
     setBeat('consequence')
     sfx.whoosh()
-    setTimeout(finishNode, CONSEQUENCE_MS)
+    setTimeout(() => fadeOutThen(finishNode), CONSEQUENCE_MS)
   }
 
   const onTimeout = () => {
@@ -122,8 +131,9 @@ export default function StoryScene() {
       g().applyChoice({ nodeId: 'E', choiceId: c.id, choiceText: c.text })
       if (c.id === 'E1') {
         g().chooseEnding(dominantEnding(g().stats), false)
-        g().setPhase('flowchart')
+        fadeOutThen(() => g().setPhase('flowchart'))
       } else {
+        settled.current = false // 换门后还有一次选择（五扇门）
         setBeat('doors')
       }
       return
@@ -136,9 +146,11 @@ export default function StoryScene() {
   }
 
   const pickDoor = (career: Career) => {
+    if (settled.current) return
+    settled.current = true
     sfx.confirm()
     g().chooseEnding(career, true)
-    g().setPhase('flowchart')
+    fadeOutThen(() => g().setPhase('flowchart'))
   }
 
   // 长按选择（D1 推门）：按住 HOLD_MS 确认，松手=退缩
@@ -182,7 +194,8 @@ export default function StoryScene() {
   const R = 36, CIRC = 2 * Math.PI * R
 
   return (
-    <div className="scene scene-fade" onClick={advanceLine} data-testid={`node-${node.id}`}>
+    <div className={`scene scene-fade ${fading ? 'scene-out' : ''}`}
+         onClick={advanceLine} data-testid={`node-${node.id}`}>
       <ParallaxStill url={still} dim={beat === 'consequence'} />
       <div key={node.id} className="light-sweep" aria-hidden />
       <div className="scene-tag">{node.age} · {node.place}</div>
