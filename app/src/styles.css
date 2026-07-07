@@ -56,6 +56,8 @@ button { font-family: inherit; cursor: pointer; }
   to   { transform: scale(1.06) translate(-0.5%, -0.35%); }
 }
 .scene-still.consequence { filter: saturate(.55) brightness(.72) contrast(1.08); }
+/* 动态剧照层：同 scene-still 的过扫描/推镜（inset 已定位），视频按 cover 充满 */
+.scene-video { object-fit: cover; width: 107%; height: 107%; }
 
 .scene-fade { animation: sceneIn 1.6s ease both; }
 @keyframes sceneIn { from { opacity: 0; } to { opacity: 1; } }
@@ -378,7 +380,10 @@ button { font-family: inherit; cursor: pointer; }
 
 /* 报告卡 slogan */
 .report-card .slogan { font-size: 13px; letter-spacing: .12em; color: #9aa4b8;
-  margin-bottom: 14px; font-style: italic; }
+  margin-bottom: 6px; font-style: italic; }
+/* 结局印记：次强倾向的个性化短句（海报变体同源） */
+.report-card .imprint { font-size: 12px; letter-spacing: .14em; color: #c9a86a;
+  margin-bottom: 14px; }
 
 /* ============ 终幕报告 ============ */
 .report { position: absolute; inset: 0; z-index: 30; overflow: hidden;

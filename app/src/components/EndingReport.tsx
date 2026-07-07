@@ -1,12 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../store'
 import { CAREER_INFO, Career, Stat, MAX_REACH, NODES } from '../story'
+import { stillUrl } from '../lib/placeholder'
 import { generateReport, Report } from '../lib/ai'
 import { computeTitle } from '../lib/titles'
 import { pushHall } from '../lib/hall'
 import FlowChart from './FlowChart'
 import { useStill } from './useStill'
 import { sfx } from '../lib/audio'
+
+// 结局印记：路线里第二强的倾向 = "你是哪一种{职业}"，决定海报变体剧照与印记文案
+// 变体图命名 end_{career}_{trait}.jpg（素材未落位时自动回退基础结局图，随放随生效）
+const TRAIT_FLAVOR: Record<Stat, { label: string; line: string }> = {
+  guard:  { label: '守望型', line: '把别人的安全，排在自己前面。' },
+  create: { label: '造梦型', line: '规则之外，总能画出另一条路。' },
+  swift:  { label: '疾风型', line: '等不及世界慢慢来。' },
+  rhythm: { label: '律动型', line: '心里始终有一支不停的拍子。' },
+  far:    { label: '远望型', line: '看的从来不是眼前这一步。' },
+}
+const OWN_STAT: Record<Career, Stat> = {
+  soldier: 'guard', painter: 'create', racer: 'swift', musician: 'rhythm', astronaut: 'far',
+}
 
 // GPTI 式 4 轴（基准：content/五结局扩容计划_db.md 附录 C/D）
 interface Axis { name: string; l: string; r: string; letters: [string, string]; pct: number }
@@ -48,6 +62,29 @@ export default function EndingReport() {
     const empty = Object.values(g.stats).every(v => v === 0)
     return empty ? { axes: r.axes, typeCode: info.typeCode } : r
   }, [g.stats, info.typeCode])
+
+  // 结局个性化：次强倾向选 end_{career}_{trait} 变体剧照，缺图回退基础图
+  const variantTrait = useMemo(() => {
+    const cands = (Object.keys(MAX_REACH) as Stat[])
+      .filter(st => st !== OWN_STAT[ending])
+      .map(st => ({ st, score: g.stats[st] / Math.sqrt(MAX_REACH[st]) }))
+      .filter(a => a.score > 0) // 运维直达全 0 → 无印记，走基础图
+      .sort((a, b) => b.score - a.score)
+    return cands[0]?.st ?? null
+  }, [g.stats, ending])
+  const variantId = variantTrait ? `${info.endStill}_${variantTrait}` : null
+  const [variantOk, setVariantOk] = useState(false)
+  useEffect(() => {
+    setVariantOk(false)
+    if (!variantId) return
+    let alive = true
+    const im = new Image()
+    im.onload = () => { if (alive) setVariantOk(true) }
+    im.src = stillUrl(variantId)
+    return () => { alive = false }
+  }, [variantId])
+  const heroStill = variantOk && variantId ? stillUrl(variantId) : endStill
+  const flavor = variantTrait ? TRAIT_FLAVOR[variantTrait] : null
 
   // 镜子没给你的人生：归一化第 2/3 高的维度对应职业
   const altLives = useMemo(() => {
@@ -125,11 +162,16 @@ export default function EndingReport() {
       bl.addColorStop(0, 'rgba(10,13,22,0)'); bl.addColorStop(1, BG)
       ctx.fillStyle = bl; ctx.fillRect(0, P_TOP + P_H - 120, W, 120)
 
-      // slogan 叠字（剧照下缘）
+      // slogan 叠字（剧照下缘）；有印记时上方多一行个性化短句
       ctx.textAlign = 'center'
+      ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowBlur = 16
+      if (flavor) {
+        ctx.fillStyle = '#d8c9a8'
+        ctx.font = 'italic 25px serif'
+        ctx.fillText(`「${flavor.label}」—— ${flavor.line}`, W / 2, P_TOP + P_H - 92)
+      }
       ctx.fillStyle = '#f2ede2'
       ctx.font = '34px serif'
-      ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowBlur = 16
       ctx.fillText(info.slogan, W / 2, P_TOP + P_H - 46)
       ctx.shadowBlur = 0
 
@@ -145,7 +187,7 @@ export default function EndingReport() {
       ctx.fillText(title, W / 2, 216)
       ctx.fillStyle = '#d8b878'
       ctx.font = '28px serif'
-      ctx.fillText(`${info.name}的一生${g.gameRank ? ` · RANK ${g.gameRank}` : ''}`, W / 2, 278)
+      ctx.fillText(`${flavor ? flavor.label : ''}${info.name}的一生${g.gameRank ? ` · RANK ${g.gameRank}` : ''}`, W / 2, 278)
       const dg = ctx.createLinearGradient(240, 0, 840, 0)
       dg.addColorStop(0, 'transparent'); dg.addColorStop(0.5, '#c9a86a'); dg.addColorStop(1, 'transparent')
       ctx.fillStyle = dg
@@ -225,7 +267,7 @@ export default function EndingReport() {
       cv.toBlob(b => resolve(URL.createObjectURL(b!)), 'image/jpeg', 0.9)
     }
 
-    const src = ending === 'painter' && g.graffitiData ? g.graffitiData : endStill
+    const src = ending === 'painter' && g.graffitiData ? g.graffitiData : heroStill
     const img = new Image()
     img.onload = () => finish(img)
     img.onerror = () => finish()
@@ -255,7 +297,7 @@ export default function EndingReport() {
     setTimeout(() => setSaved(false), 2500)
   }
 
-  const bg = ending === 'painter' && g.graffitiData ? g.graffitiData : endStill
+  const bg = ending === 'painter' && g.graffitiData ? g.graffitiData : heroStill
 
   return (
     <div className="report" data-testid="report">
@@ -266,8 +308,9 @@ export default function EndingReport() {
       <div className="report-card">
         <div className="ai-tag">{report ? (report.fromAI ? 'RTX LOCAL AI' : 'OFFLINE MODE') : 'RTX LOCAL AI'}</div>
         <div className="rk">人生预演报告 · TYPE <span data-testid="type-code">{typeCode}</span></div>
-        <h2>{info.name}的一生</h2>
+        <h2>{flavor ? flavor.label : ''}{info.name}的一生</h2>
         <div className="slogan">{info.slogan}</div>
+        {flavor && <div className="imprint" data-testid="imprint">印记 · {flavor.line}</div>}
         {report ? (
           <>
             <div className="honor" data-testid="honor">

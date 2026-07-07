@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useGame } from '../store'
 import { CAREER_INFO } from '../story'
-import { useStill } from './useStill'
+import { useStill, useMotion } from './useStill'
 import ParallaxStill from './ParallaxStill'
 import { sfx } from '../lib/audio'
 
@@ -9,6 +9,7 @@ export default function CareerIntro() {
   const career = useGame(s => s.ending)!
   const info = CAREER_INFO[career]
   const still = useStill(info.introStill, info.palette, `职业前奏·${info.name}`)
+  const motion = useMotion(info.introStill)
   const setPhase = useGame(s => s.setPhase)
   const [lineIdx, setLineIdx] = useState(0)
 
@@ -20,7 +21,7 @@ export default function CareerIntro() {
 
   return (
     <div className="scene scene-fade" data-testid="career-intro">
-      <ParallaxStill url={still} />
+      <ParallaxStill url={still} video={motion} />
       <div className="light-sweep" aria-hidden />
       <div className="career-intro-copy">
         <div className="career-name">{info.name} · {info.title}</div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../store'
 import { NODES, CHAPTER_FLOW, Choice, Career, dominantEnding, CAREER_INFO } from '../story'
-import { useStill } from './useStill'
+import { useStill, useMotion } from './useStill'
 import ParallaxStill from './ParallaxStill'
 import { sfx } from '../lib/audio'
 
@@ -16,6 +16,7 @@ export default function StoryScene() {
   const nodeId = useGame(s => s.nodeId)
   const node = NODES[nodeId]
   const still = useStill(node.still, node.palette, `${node.age}·${node.place}`)
+  const motion = useMotion(node.still) // 动态剧照素材就位即自动生效
 
   const [beat, setBeat] = useState<Beat>('lines')
   const [lineIdx, setLineIdx] = useState(0)
@@ -196,7 +197,7 @@ export default function StoryScene() {
   return (
     <div className={`scene scene-fade ${fading ? 'scene-out' : ''}`}
          onClick={advanceLine} data-testid={`node-${node.id}`}>
-      <ParallaxStill url={still} dim={beat === 'consequence'} />
+      <ParallaxStill url={still} video={motion} dim={beat === 'consequence'} />
       <div key={node.id} className="light-sweep" aria-hidden />
       <div className="scene-tag">{node.age} · {node.place}</div>
 

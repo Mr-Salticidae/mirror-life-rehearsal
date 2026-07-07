@@ -15,6 +15,30 @@ export function preloadStills(ids: string[]) {
   }
 }
 
+// 动态剧照 /videos/{id}.mp4：存在即用（叠在静图上循环播放），缺失/失败静图兜底
+// 懒探测不预热——视频体积大，只在进入对应场景时按需检查
+const motionLoaded = new Set<string>()
+const motionMissing = new Set<string>()
+export function motionUrl(id: string): string {
+  return `${import.meta.env.BASE_URL}videos/${id}.mp4`
+}
+export function useMotion(id: string): string | null {
+  const [, force] = useState(0)
+  useEffect(() => {
+    if (motionLoaded.has(id) || motionMissing.has(id)) return
+    let alive = true
+    const v = document.createElement('video')
+    v.muted = true
+    v.preload = 'metadata'
+    v.onloadeddata = () => { motionLoaded.add(id); if (alive) force(x => x + 1) }
+    v.onerror = () => { motionMissing.add(id) }
+    v.src = motionUrl(id)
+    v.load()
+    return () => { alive = false; v.removeAttribute('src') }
+  }, [id])
+  return motionLoaded.has(id) ? motionUrl(id) : null
+}
+
 // 优先真实剧照 /stills/{id}.jpg：已预热则同步直出，未就绪先占位、载成后换
 export function useStill(id: string, palette: [string, string, string], label = ''): string {
   const [, force] = useState(0)
