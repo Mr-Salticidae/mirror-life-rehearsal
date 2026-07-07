@@ -43,6 +43,10 @@
 - 稳定性护栏不变：闲置 120s 回待机、错误边界、WebGL 失败跳报告、AI 断线走模板、缺图走占位图。
 - 开发服务器：`npm run dev` → http://localhost:5174；本会话验证用 5199（.claude/launch.json，避免端口冲突）。
   直达调试：`/?career=soldier|painter|racer|musician|astronaut`。
+- **内测预览（同事请用这个）**：https://mr-salticidae.github.io/mirror-life-rehearsal-preview/
+  —— 公开小仓库只放构建产物（主导批准），源码/剧本/文档仍在私有主仓库；
+  更新预览：仓库根目录跑 `.\deploy-preview.ps1`（构建+推送一条龙）。
+  注意：线上无本地 AI 端点，报告走离线模板+模拟流式（这本身就是展会断网态，可顺便验收）。
 - **纸面值提醒**：节奏 S=命中率 90%+连击 60、对接 S=综合 85、FPS 32s 涌入难度——均未经真人校准，彩排后调。
 
 ## 五、下一阶段待办（按优先级）
