@@ -80,39 +80,73 @@ export default function FpsRange() {
     }))
     scene.add(snow)
 
-    // 靶子
+    // 靶子：人形立牌（像素立绘 + 红/白靶板，射击场纸靶质感；立绘载入前纯靶板也成立）
+    const texLoader = new THREE.TextureLoader()
+    const charTexs: { tex: THREE.Texture; aspect: number }[] = []
+    for (const n of ['char_biker', 'char_punk', 'char_cyborg']) {
+      texLoader.load(`${import.meta.env.BASE_URL}sprites/${n}.png`, t => {
+        // 序列帧首帧（48×48 方帧）内按 alpha 求角色实际包围盒，紧致裁切保证居中与真实宽高比
+        const img = t.image as HTMLImageElement
+        const fh = img.height, fw = fh
+        const cv2 = document.createElement('canvas')
+        cv2.width = fw; cv2.height = fh
+        const c2 = cv2.getContext('2d')!
+        c2.drawImage(img, 0, 0, fw, fh, 0, 0, fw, fh)
+        const d = c2.getImageData(0, 0, fw, fh).data
+        let minX = fw, maxX = 0, minY = fh, maxY = 0
+        for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+          if (d[(y * fw + x) * 4 + 3] > 16) {
+            if (x < minX) minX = x; if (x > maxX) maxX = x
+            if (y < minY) minY = y; if (y > maxY) maxY = y
+          }
+        }
+        if (maxX <= minX || maxY <= minY) { minX = 0; maxX = fw - 1; minY = 0; maxY = fh - 1 }
+        t.repeat.set((maxX - minX + 1) / img.width, (maxY - minY + 1) / fh)
+        t.offset.set(minX / img.width, (fh - 1 - maxY) / fh)
+        t.magFilter = THREE.NearestFilter
+        t.colorSpace = THREE.SRGBColorSpace
+        charTexs.push({ tex: t, aspect: (maxX - minX + 1) / (maxY - minY + 1) })
+      })
+    }
     interface Target { grp: THREE.Group; civilian: boolean; born: number; life: number; dead: boolean }
     const targets: Target[] = []
     const mkTarget = (forceCiv?: boolean) => {
       const civilian = forceCiv ?? Math.random() < 0.28
       const grp = new THREE.Group()
-      const body = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.45, 1.1, 4, 12),
-        new THREE.MeshStandardMaterial({
-          color: civilian ? 0xd8d8d0 : 0xb03830,
-          emissive: civilian ? 0x444440 : 0x581410,
-          roughness: 0.6,
-        }),
-      )
-      body.position.y = 1.05
+      const boardMat = new THREE.MeshStandardMaterial({
+        color: civilian ? 0xe0ded6 : 0xb03830,
+        emissive: civilian ? 0x4a4a44 : 0x581410,
+        roughness: 0.7, side: THREE.DoubleSide,
+      })
+      // 靶板分身/头两块，命中区语义与旧版一致（打头×2）；板即敌我颜色信号
+      const body = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.4), boardMat)
+      body.position.y = 0.85
       body.userData.part = 'body'
-      const head = new THREE.Mesh(
-        new THREE.SphereGeometry(0.26, 12, 10),
-        new THREE.MeshStandardMaterial({
-          color: civilian ? 0xd8d8d0 : 0xd84838,
-          emissive: civilian ? 0x444440 : 0x701810,
-          roughness: 0.5,
-        }),
-      )
-      head.position.y = 2.15
+      const head = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.5), boardMat)
+      head.position.y = 1.82
       head.userData.part = 'head'
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.65, 0.045, 8, 32),
-        new THREE.MeshBasicMaterial({ color: civilian ? 0xffffff : 0xff5040 }),
+      // 支架
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.4, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0x2a2e36, roughness: 0.9 }),
       )
-      ring.position.y = 1.05
-      grp.add(body, head, ring)
+      post.position.y = 0.12
+      // 像素角色立绘（主视觉，不参与射线判定）：紧致裁切后按真实比例建面，脚底落地
+      if (charTexs.length) {
+        const { tex, aspect } = charTexs[Math.floor(Math.random() * charTexs.length)]
+        const h = 1.9
+        const sprite = new THREE.Mesh(
+          new THREE.PlaneGeometry(h * aspect, h),
+          new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide }),
+        )
+        sprite.position.set(0, h / 2, 0.04)
+        sprite.raycast = () => { /* 立绘不挡子弹，命中判定只认靶板 */ }
+        grp.add(sprite)
+      }
+      grp.add(body, head, post)
       grp.position.set((Math.random() - 0.5) * 36, 0, -14 - Math.random() * 34)
+      grp.lookAt(0, 0, 0) // 立牌面向玩家
+      grp.rotation.x = 0; grp.rotation.z = 0
       grp.scale.setScalar(0.01)
       scene.add(grp)
       const t = { grp, civilian, born: performance.now(), life: 2600 + Math.random() * 2200, dead: false }
@@ -120,8 +154,12 @@ export default function FpsRange() {
       return t
     }
     // 开场预置演示靶（不自动消失），让玩家锁定前就看清红/白区别
-    mkTarget(false).life = Infinity
-    mkTarget(true).life = Infinity
+    // 延迟到立绘贴图就位后生成（350ms 足够本地资源）,避免演示靶光板无人
+    const demoTimer = window.setTimeout(() => {
+      if (endedRef.current) return
+      mkTarget(false).life = Infinity
+      mkTarget(true).life = Infinity
+    }, 350)
 
     // 视角控制（pointer lock；不可用则降级为鼠标位置瞄准，防整线卡死——QA D-02）
     let yaw = 0, pitch = 0
@@ -267,6 +305,7 @@ export default function FpsRange() {
 
     return () => {
       cancelAnimationFrame(raf)
+      clearTimeout(demoTimer)
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mousedown', shoot)
       document.removeEventListener('pointerlockchange', onLockChange)

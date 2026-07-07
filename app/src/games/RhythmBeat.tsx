@@ -45,6 +45,8 @@ export default function RhythmBeat() {
     const notes = buildChart()
     const st = { combo: 0, maxCombo: 0, hits: 0, score: 0, flash: [0, 0, 0, 0], pulse: 0, startAt: 0 }
     const bursts: { x: number; y: number; r: number; life: number }[] = [] // 全连爆发光环
+    const floats: { x: number; y: number; text: string; color: string; life: number }[] = [] // 判定浮字
+    const sparks: { x: number; y: number; vx: number; vy: number; life: number; color: string }[] = [] // 命中火花
     const ended = { current: false }
 
     // 音频：鼓组合成 + 前瞻调度
@@ -118,6 +120,21 @@ export default function RhythmBeat() {
         if (d <= HIT_WINDOW && (!best || d < Math.abs(best.t - now))) best = n
       }
       if (best) {
+        const dBest = Math.abs(best.t - now)
+        const laneX = x0 + lane * laneW + laneW / 2
+        // 判定浮字 + 命中火花（每次命中都有反馈，不只高连击段）
+        floats.push({
+          x: laneX, y: judgeY - 34,
+          text: dBest <= 60 ? 'PERFECT' : 'GOOD',
+          color: dBest <= 60 ? '#ffd86a' : '#8fd8ff', life: 1,
+        })
+        for (let i = 0; i < 6; i++) {
+          const a = Math.random() * Math.PI * 2
+          sparks.push({
+            x: laneX, y: judgeY, life: 1, color: LANE_COLOR[lane],
+            vx: Math.cos(a) * (1.5 + Math.random() * 2.5), vy: Math.sin(a) * (1.5 + Math.random() * 2.5) - 1.2,
+          })
+        }
         best.hit = true
         st.hits++
         st.combo++
@@ -168,6 +185,7 @@ export default function RhythmBeat() {
       for (const n of notes) {
         if (!n.hit && !n.missed && now - n.t > HIT_WINDOW) {
           n.missed = true
+          floats.push({ x: x0 + n.lane * laneW + laneW / 2, y: judgeY - 34, text: 'MISS', color: '#7a7f8c', life: 1 })
           if (st.combo > 0) { st.combo = 0; setCombo(0) }
         }
       }
@@ -176,7 +194,7 @@ export default function RhythmBeat() {
       st.pulse = Math.max(0, st.pulse - 0.06)
       ctx.fillStyle = `rgb(${14 + st.pulse * 12},${8 + st.pulse * 6},${22 + st.pulse * 16})`
       ctx.fillRect(0, 0, cv.width, cv.height)
-      // 轨道
+      // 轨道 + 分隔线
       for (let l = 0; l < LANES; l++) {
         const x = x0 + l * laneW
         ctx.fillStyle = `rgba(255,255,255,${0.03 + st.flash[l] * 0.1})`
@@ -188,6 +206,8 @@ export default function RhythmBeat() {
         ctx.textAlign = 'center'
         ctx.fillText(KEYS[l].toUpperCase(), x + laneW / 2, judgeY + 46)
       }
+      ctx.fillStyle = 'rgba(232,207,150,.18)'
+      for (let l = 0; l <= LANES; l++) ctx.fillRect(x0 + l * laneW - 1, 0, 1.5, cv.height)
       // 判定线
       ctx.fillStyle = 'rgba(232,207,150,.85)'
       ctx.fillRect(x0 - 20, judgeY - 2, totalW + 40, 3)
@@ -212,6 +232,28 @@ export default function RhythmBeat() {
         ctx.lineWidth = 2.5
         ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke()
       }
+      // 命中火花
+      for (let si = sparks.length - 1; si >= 0; si--) {
+        const s = sparks[si]
+        s.x += s.vx; s.y += s.vy; s.vy += 0.12; s.life -= 0.04
+        if (s.life <= 0) { sparks.splice(si, 1); continue }
+        ctx.globalAlpha = s.life
+        ctx.fillStyle = s.color
+        ctx.fillRect(s.x - 1.5, s.y - 1.5, 3, 3)
+      }
+      ctx.globalAlpha = 1
+      // 判定浮字（PERFECT / GOOD / MISS 上浮渐隐）
+      ctx.textAlign = 'center'
+      for (let fi = floats.length - 1; fi >= 0; fi--) {
+        const f = floats[fi]
+        f.y -= 0.8; f.life -= 0.03
+        if (f.life <= 0) { floats.splice(fi, 1); continue }
+        ctx.globalAlpha = Math.min(1, f.life * 1.4)
+        ctx.fillStyle = f.color
+        ctx.font = `bold ${f.text === 'MISS' ? 13 : 15}px monospace`
+        ctx.fillText(f.text, f.x, f.y)
+      }
+      ctx.globalAlpha = 1
       // 结束
       if (st.startAt && left <= 0 && !ended.current) {
         ended.current = true

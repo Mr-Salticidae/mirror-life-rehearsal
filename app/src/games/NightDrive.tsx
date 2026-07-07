@@ -2,8 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useGame, Rank } from '../store'
 import { rankOf } from '../lib/titles'
+import { loadModel, cloneFit, cloneProp } from '../lib/models'
 import RankSplash from '../components/RankSplash'
 import { sfx } from '../lib/audio'
+
+// 车流模型池（Kenney Car Kit，载入前用程序化盒车兜底）
+const TRAFFIC_MODELS = ['sedan', 'taxi', 'van', 'suv', 'police', 'delivery', 'hatchback-sports']
 
 // 赛车手《夜环线》：雨夜三车道，←→/AD 变道躲车流，蓝色氮气加速，60s 距离计分
 const DURATION = 60
@@ -80,6 +84,36 @@ export default function NightDrive() {
         scene.add(pole); poles.push(pole)
       }
     }
+    // 灯柱换 Kenney 现代路灯（点光源保留），灯臂按包围盒偏心朝路心
+    loadModel('models/props/lightPostModern.glb').then(m => {
+      if (!m) return
+      for (const pole of poles) {
+        const meshes = pole.children.filter(c => (c as THREE.Mesh).isMesh)
+        meshes.forEach(c => pole.remove(c))
+        const prop = cloneProp(m, 5.2)
+        const box = new THREE.Box3().setFromObject(prop)
+        const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2
+        const armAngle = Math.atan2(cx, cz)                       // 灯臂当前朝向
+        const wantAngle = Math.sign(pole.position.x) * -Math.PI / 2 // 期望朝路心
+        prop.rotation.y = wantAngle - armAngle
+        pole.add(prop)
+      }
+    })
+    // 路缘护栏（白色反光段，按真实护栏高度 0.85m 缩放，随路面滚动循环）
+    const barriers: THREE.Object3D[] = []
+    loadModel('models/props/barrierWhite.glb').then(m => {
+      if (!m) return
+      for (let i = 0; i < 60; i++) {
+        for (const side of [-1, 1]) {
+          const b = cloneProp(m, 0.85)
+          // 长轴顺路（沿 z）
+          const s = new THREE.Box3().setFromObject(b).getSize(new THREE.Vector3())
+          if (s.x > s.z) b.rotation.y = Math.PI / 2
+          b.position.set(side * 6.6, 0, -i * 7)
+          scene.add(b); barriers.push(b)
+        }
+      }
+    })
     // 雨
     const rainN = 900
     const rainGeo = new THREE.BufferGeometry()
@@ -110,6 +144,16 @@ export default function NightDrive() {
     head1.position.set(0, 0.7, -1.6); head1.target.position.set(0, 0, -30)
     car.add(chassis, cabin, tail, head1, head1.target)
     scene.add(car)
+    // 玩家车换 Kenney 赛车模型（载入即替换程序化楔形，灯光/尾灯保留）
+    loadModel('models/cars/race.glb').then(m => {
+      if (!m) return
+      car.remove(chassis, cabin)
+      car.add(cloneFit(m, 3.6, true))
+    })
+
+    // 车流模型池预载
+    const trafficPool: THREE.Group[] = []
+    for (const n of TRAFFIC_MODELS) loadModel(`models/cars/${n}.glb`).then(m => { if (m) trafficPool.push(m) })
 
     // 对手车
     interface Traffic { grp: THREE.Group; lane: number; speed: number }
@@ -117,14 +161,20 @@ export default function NightDrive() {
     const mkTraffic = (z: number) => {
       const lane = Math.floor(Math.random() * 3)
       const grp = new THREE.Group()
-      const hue = Math.random()
-      const b = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 3.2),
-        new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue, 0.4, 0.35), roughness: 0.4, metalness: 0.5 }))
-      b.position.y = 0.5
+      if (trafficPool.length) {
+        // 模型池就绪：随机取一辆（同向行驶，与玩家车同朝向）
+        grp.add(cloneFit(trafficPool[Math.floor(Math.random() * trafficPool.length)], 3.2, true))
+      } else {
+        const hue = Math.random()
+        const b = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 3.2),
+          new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue, 0.4, 0.35), roughness: 0.4, metalness: 0.5 }))
+        b.position.y = 0.5
+        grp.add(b)
+      }
       const t = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.1),
         new THREE.MeshBasicMaterial({ color: 0xff3020 }))
       t.position.set(0, 0.65, 1.62)
-      grp.add(b, t)
+      grp.add(t)
       grp.position.set(LANES[lane], 0, z)
       scene.add(grp)
       traffic.push({ grp, lane, speed: 16 + Math.random() * 8 })
@@ -204,6 +254,7 @@ export default function NightDrive() {
       const dz = state.speed * dt
       for (const d of dashes) { d.position.z += dz; if (d.position.z > 6) d.position.z -= 360 }
       for (const p of poles) { p.position.z += dz; if (p.position.z > 10) p.position.z -= 16 * 24 }
+      for (const b of barriers) { b.position.z += dz; if (b.position.z > 8) b.position.z -= 60 * 7 }
       for (const t of [...traffic]) { // 快照遍历：splice 原数组不会跳过下一辆
         t.grp.position.z += (state.speed - t.speed) * dt
         if (t.grp.position.z > 10) {
