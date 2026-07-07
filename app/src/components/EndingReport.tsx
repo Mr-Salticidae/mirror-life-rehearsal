@@ -123,11 +123,13 @@ export default function EndingReport() {
   // 顶部=类型代码+大称号 / 中部=结局剧照全幅+slogan 叠字 / 底部=4 轴微缩条+结语+二维码位+落款
   const composeCard = (rep: Report, qrText: string | null): Promise<string> => new Promise(resolve => {
     const W = 1080, H = 1440
+    const SCALE = 2 // 2x 渲染输出 2160×2880：海报二维码模块保真可扫（1x 下 ~1px/模块糊成灰），文字剧照同步锐化
     const P_TOP = 330, P_H = 700 // 剧照带 330..1030
     const BG = '#0a0d16'
     const cv = document.createElement('canvas')
-    cv.width = W; cv.height = H
+    cv.width = W * SCALE; cv.height = H * SCALE
     const ctx = cv.getContext('2d')!
+    ctx.scale(SCALE, SCALE) // 之后全部按 1080×1440 逻辑坐标绘制
 
     const finish = (img?: HTMLImageElement) => {
       ctx.fillStyle = BG
@@ -229,7 +231,8 @@ export default function EndingReport() {
       wrapText(ctx, `—— ${rep.finalWord}`, W / 2 - 70, 1210, W * 0.52, 48)
 
       // 二维码（右下真码）：扫码手机查看完整图文报告；生成失败回退镜面印章
-      const QS = 136, qx = W - 90 - QS, qy = H - 90 - QS
+      // 框位 176px（原 136 在成图上密度过高扫不出，主导实测），静区/整数模块见 paintQr
+      const QS = 176, qx = W - 90 - QS, qy = H - 90 - QS
       ctx.strokeStyle = 'rgba(216,184,120,.75)'
       ctx.lineWidth = 2
       ctx.strokeRect(qx - 5, qy - 5, QS + 10, QS + 10)
@@ -241,7 +244,7 @@ export default function EndingReport() {
       if (qrOk) {
         ctx.fillStyle = 'rgba(216,184,120,.85)'
         ctx.font = '17px serif'
-        ctx.fillText('扫码 · 手机查看完整报告', qx + QS / 2, qy - 20)
+        ctx.fillText('扫码 · 手机查看完整报告', qx + QS / 2, qy - 16)
       } else {
         ctx.lineWidth = 1
         ctx.strokeRect(qx + 8, qy + 8, QS - 16, QS - 16)

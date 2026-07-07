@@ -91,17 +91,34 @@ export async function buildShareUrl(p: SharePayload): Promise<string> {
 }
 
 // ---------- 二维码绘制 ----------
-// ECC 用 L：屏扫/图扫无污损场景，密度优先保证小框可扫
+// ECC 用 L：屏扫/图扫无污损场景，密度优先保证小框可扫。
+// 反糊三件套（海报实测扫不出的教训）：离屏按"每模块整数像素"绘制 → 关平滑贴入（无抗锯齿灰边）；
+// 静区取标准 4 模块；自动感知 ctx 缩放（海报 2x 渲染时按设备像素算模块）。
 export function paintQr(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number) {
   const qr = QRCode.create(text, { errorCorrectionLevel: 'L' })
   const n = qr.modules.size
-  const quiet = 2 // 白色静区（模块数）
-  const cell = size / (n + quiet * 2)
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(x, y, size, size)
-  ctx.fillStyle = '#000000'
+  const quiet = 4
+  const total = n + quiet * 2
+  const scale = ctx.getTransform().a || 1
+  const px = Math.max(1, Math.floor((size * scale) / total)) // 每模块设备像素（整数）
+
+  const off = document.createElement('canvas')
+  off.width = off.height = total * px
+  const octx = off.getContext('2d')!
+  octx.fillStyle = '#ffffff'
+  octx.fillRect(0, 0, off.width, off.height)
+  octx.fillStyle = '#000000'
   for (let r = 0; r < n; r++)
     for (let c = 0; c < n; c++)
       if (qr.modules.data[r * n + c])
-        ctx.fillRect(x + (c + quiet) * cell, y + (r + quiet) * cell, cell + 0.4, cell + 0.4)
+        octx.fillRect((c + quiet) * px, (r + quiet) * px, px, px)
+
+  // 白底铺满框位，码图居中贴入（逻辑坐标）
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(x, y, size, size)
+  const draw = off.width / scale
+  const prevSmooth = ctx.imageSmoothingEnabled
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(off, x + (size - draw) / 2, y + (size - draw) / 2, draw, draw)
+  ctx.imageSmoothingEnabled = prevSmooth
 }
