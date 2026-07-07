@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 // 剧照视差层：鼠标微视差（外层）+ Ken Burns 慢推镜（内层），两个 transform 互不打架
-// video 传入时叠动态剧照（循环播放，静图垫底防黑帧；缺素材/加载失败自然回退静图）
+// video 传入时叠动态剧照（只播一遍后定格尾帧，静图垫底防黑帧；缺素材/加载失败自然回退静图）
 export default function ParallaxStill({ url, video, dim }: { url: string; video?: string | null; dim?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -24,8 +24,9 @@ export default function ParallaxStill({ url, video, dim }: { url: string; video?
       />
       {video && (
         <video
+          key={video}
           className={`scene-still scene-video ${dim ? 'consequence' : ''}`}
-          src={video} autoPlay muted loop playsInline
+          src={video} autoPlay muted playsInline
         />
       )}
     </div>

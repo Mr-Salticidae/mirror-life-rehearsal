@@ -24,6 +24,22 @@
       "cwd": "app",
       "port": 5197,
       "autoPort": false
+    },
+    {
+      "name": "mirror-dev-alt3",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5196"],
+      "cwd": "app",
+      "port": 5196,
+      "autoPort": false
+    },
+    {
+      "name": "mirror-dev-alt4",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5195"],
+      "cwd": "app",
+      "port": 5195,
+      "autoPort": false
     }
   ]
 }

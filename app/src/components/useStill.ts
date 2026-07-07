@@ -15,7 +15,7 @@ export function preloadStills(ids: string[]) {
   }
 }
 
-// 动态剧照 /videos/{id}.mp4：存在即用（叠在静图上循环播放），缺失/失败静图兜底
+// 动态剧照 /videos/{id}.mp4：存在即用（叠在静图上播一遍后定格尾帧），缺失/失败静图兜底
 // 懒探测不预热——视频体积大，只在进入对应场景时按需检查
 const motionLoaded = new Set<string>()
 const motionMissing = new Set<string>()
