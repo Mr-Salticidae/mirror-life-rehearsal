@@ -63,17 +63,24 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
     ]
   }
 
-  // 人生曲线（主导定案）：一条连续金线蜿蜒穿过 节点→选中项→下一节点，代替"直线主线+分支收束"
+  // 人生曲线（主导定案）：从第一个节点出发后，只跟随选中项游动——
+  // 全选上层则一路在上层，不折回主轴；上下切换时才自然穿越主轴
   const lifePts: [number, number][] = []
+  const firstDone = visible.find(id => doneNodes.has(id))
+  if (firstDone) lifePts.push([nx(order.indexOf(firstDone)), SPINE])
   for (const id of visible) {
-    if (!doneNodes.has(id)) continue
-    const i = order.indexOf(id)
-    lifePts.push([nx(i), SPINE])
     const t = chosen.get(id)
-    if (!t) continue
+    if (!doneNodes.has(id) || !t) continue
+    const i = order.indexOf(id)
     const all = nodeChoices(id)
     const j = all.findIndex(c => c.id === t)
     if (j >= 0) lifePts.push([nx(i) + gapX * 0.42, branchYs(all.length)[j] ?? SPINE - 150 + j * 100])
+  }
+  // 终点：金线直接游进选中的结局框（不再借道主轴上的 E 节点）
+  const curveIntoEnding = !!ending && lifePts.length >= 2
+  if (curveIntoEnding) {
+    const j = (Object.keys(CAREER_INFO) as Career[]).indexOf(ending!)
+    lifePts.push([W - 60 - 34, SPINE - 190 + j * 95])
   }
   const lifePath = catmullPath(lifePts)
 
@@ -146,9 +153,12 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
             const on = ending === k
             return (
               <g key={k}>
-                <path d={`M ${nx(order.length - 1)} ${SPINE} C ${W - 150} ${SPINE}, ${W - 150} ${y}, ${x - 34} ${y}`}
-                      fill="none" stroke={on ? GOLD : DIM} strokeWidth={on ? 2.5 : 1.2}
-                      strokeDasharray={on ? 'none' : '4 5'} opacity={on ? 0.95 : 0.5} />
+                {/* 人生曲线已直接游进选中结局框时，不再画借道 E 节点的连线 */}
+                {!(on && curveIntoEnding) && (
+                  <path d={`M ${nx(order.length - 1)} ${SPINE} C ${W - 150} ${SPINE}, ${W - 150} ${y}, ${x - 34} ${y}`}
+                        fill="none" stroke={on ? GOLD : DIM} strokeWidth={on ? 2.5 : 1.2}
+                        strokeDasharray={on ? 'none' : '4 5'} opacity={on ? 0.95 : 0.5} />
+                )}
                 <rect x={x - 34} y={y - 15} width="68" height="30" rx="3"
                       fill={on ? 'rgba(216,184,120,.16)' : '#11141c'}
                       stroke={on ? GOLD : DIM} strokeWidth={on ? 1.5 : 1} />
