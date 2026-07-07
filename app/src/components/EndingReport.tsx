@@ -8,6 +8,7 @@ import { pushHall } from '../lib/hall'
 import { TRAIT_FLAVOR, STAT_ORDER, computeAxes, computeVariantTrait, computeAltLives } from '../lib/reportModel'
 import { SharePayload, buildShareUrl, paintQr } from '../lib/share'
 import FlowChart from './FlowChart'
+import PrintReport, { printCardA4, printFullReport } from './PrintReport'
 import { useStill } from './useStill'
 import { sfx } from '../lib/audio'
 
@@ -24,6 +25,7 @@ export default function EndingReport() {
   // 扫码链接：undefined=构建中，null=构建失败（海报回退镜印章，侧栏隐藏）
   const [shareUrl, setShareUrl] = useState<string | null | undefined>(undefined)
   const qrCanvas = useRef<HTMLCanvasElement>(null)
+  const printRef = useRef<HTMLDivElement>(null)
   const requested = useRef(false)
 
   const title = useMemo(
@@ -65,6 +67,7 @@ export default function EndingReport() {
       .filter(id => byNode.has(id))
       .map(id => ({
         nodeId: id,
+        age: NODES[id].age,
         place: NODES[id].place,
         choice: (byNode.get(id) ?? '').replace(/[「」"]/g, ''),
       }))
@@ -304,6 +307,14 @@ export default function EndingReport() {
 
   const bg = ending === 'painter' && g.graffitiData ? g.graffitiData : heroStill
 
+  // 展台打印两版式：卡片=A4 整页；完整报告=210mm 卷纸、页长随内容自适应（≤1.2m）满幅无白边
+  const doPrintCard = () => { sfx.click(); printCardA4() }
+  const doPrintReport = () => {
+    if (!printRef.current) return
+    sfx.click()
+    printFullReport(printRef.current)
+  }
+
   return (
     <div className="report" data-testid="report">
       <div className="scene-still" style={{
@@ -411,6 +422,12 @@ export default function EndingReport() {
           <button className="primary" data-testid="save-card" onClick={exportCard} disabled={!cardUrl}>
             {saved ? '已保存 ✓' : cardUrl ? '保存分享卡' : '生成中…'}
           </button>
+          <button data-testid="print-card" onClick={doPrintCard} disabled={!cardUrl}>
+            打印卡片
+          </button>
+          <button data-testid="print-report" onClick={doPrintReport} disabled={!report}>
+            打印完整报告
+          </button>
           <button data-testid="retry-game" onClick={() => { sfx.confirm(); useGame.getState().retryGame() }}>
             再试一次
           </button>
@@ -419,6 +436,25 @@ export default function EndingReport() {
           </button>
         </div>
       </div>
+
+      {/* 打印版面常驻屏外（剧照/二维码提前就绪），点打印时量高注入 @page 再唤起打印 */}
+      {report && (
+        <PrintReport
+          sheetRef={printRef}
+          ending={ending}
+          title={title}
+          typeCode={typeCode}
+          rank={g.gameRank}
+          hero={bg}
+          flavor={flavor}
+          report={report}
+          timeline={timeline}
+          axes={axes}
+          altLives={altLives}
+          shareUrl={shareUrl ?? null}
+          cardUrl={cardUrl}
+        />
+      )}
 
       {showCard && cardUrl && (
         <div className="share-overlay" data-testid="share-overlay" onClick={() => setShowCard(false)}>
