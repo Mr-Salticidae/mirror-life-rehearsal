@@ -7,6 +7,19 @@ const GOLD = '#d8b878'
 const DIM = '#3a4050'
 const DIM_TEXT = '#5a5f6e'
 
+// Catmull-Rom → 贝塞尔：让人生曲线平滑穿过每个锚点（节点处带势能斜穿，选项点自然成波峰/谷）
+function catmullPath(p: [number, number][]): string {
+  if (p.length < 2) return ''
+  let d = `M ${p[0][0]} ${p[0][1]}`
+  for (let i = 0; i < p.length - 1; i++) {
+    const p0 = p[i - 1] ?? p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] ?? p2
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0]} ${p2[1]}`
+  }
+  return d
+}
+
 // 底特律式分支图：走过的路径点亮，没走的灰显加锁
 export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
   const path = useGame(s => s.path)
@@ -37,15 +50,41 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
   const startX = 90, gapX = (W - 200) / Math.max(order.length - 1, 1)
   const nx = (i: number) => startX + i * gapX
 
+  // 选项分支的纵向扇形位（避开主线，上下错开）——节点渲染与人生曲线共用
+  const branchYs = (nCh: number) =>
+    nCh === 2 ? [SPINE - 120, SPINE + 120]
+      : nCh === 3 ? [SPINE - 170, SPINE - 95, SPINE + 130]
+      : [SPINE - 190, SPINE - 105, SPINE + 105, SPINE + 190]
+  const nodeChoices = (id: string) => {
+    const node = NODES[id]
+    return [
+      ...node.choices.map(c => ({ id: c.id, text: c.text })),
+      ...(node.onTimeout ? [{ id: 'timeout', text: '……（犹豫）' }] : []),
+    ]
+  }
+
+  // 人生曲线（主导定案）：一条连续金线蜿蜒穿过 节点→选中项→下一节点，代替"直线主线+分支收束"
+  const lifePts: [number, number][] = []
+  for (const id of visible) {
+    if (!doneNodes.has(id)) continue
+    const i = order.indexOf(id)
+    lifePts.push([nx(i), SPINE])
+    const t = chosen.get(id)
+    if (!t) continue
+    const all = nodeChoices(id)
+    const j = all.findIndex(c => c.id === t)
+    if (j >= 0) lifePts.push([nx(i) + gapX * 0.42, branchYs(all.length)[j] ?? SPINE - 150 + j * 100])
+  }
+  const lifePath = catmullPath(lifePts)
+
   const svg = (
     <svg viewBox={`0 0 ${W} ${H}`}>
-      {/* 主线 */}
-      {visible.length > 1 && (
-        <line x1={nx(order.indexOf(visible[0]))} y1={SPINE}
-              x2={nx(order.indexOf(visible[visible.length - 1]))} y2={SPINE}
-              stroke={GOLD} strokeWidth="2" opacity="0.85">
-          <animate attributeName="opacity" from="0" to="0.85" dur="1.2s" />
-        </line>
+      {/* 人生曲线 */}
+      {lifePath && (
+        <path d={lifePath} fill="none" stroke={GOLD} strokeWidth="2.5"
+              strokeLinecap="round" opacity="0.9">
+          <animate attributeName="opacity" from="0" to="0.9" dur="1.2s" />
+        </path>
       )}
 
       {order.map((id, i) => {
@@ -54,16 +93,8 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
         const isVisible = mode === 'final' || isDone
         if (!isVisible) return null
         const x = nx(i)
-        // 选项分支的纵向扇形位（避开主线，上下错开）
-        const nCh = node.choices.length + (node.onTimeout ? 1 : 0)
-        const finalYs = nCh === 2 ? [SPINE - 120, SPINE + 120]
-          : nCh === 3 ? [SPINE - 170, SPINE - 95, SPINE + 130]
-          : [SPINE - 190, SPINE - 105, SPINE + 105, SPINE + 190]
-
-        const allChoices = [
-          ...node.choices.map(c => ({ id: c.id, text: c.text })),
-          ...(node.onTimeout ? [{ id: 'timeout', text: '……（犹豫）' }] : []),
-        ]
+        const allChoices = nodeChoices(id)
+        const finalYs = branchYs(allChoices.length)
         const taken = chosen.get(id)
 
         return (
@@ -83,9 +114,12 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
               const col = isTaken ? GOLD : DIM
               return (
                 <g key={c.id} opacity={isDone || mode === 'final' ? 1 : 0.4}>
-                  <path d={`M ${x} ${SPINE} C ${x + gapX * 0.2} ${SPINE}, ${x + gapX * 0.2} ${cy}, ${cx} ${cy}`}
-                        fill="none" stroke={col} strokeWidth={isTaken ? 2.5 : 1.2}
-                        strokeDasharray={isTaken ? 'none' : '4 5'} opacity={isTaken ? 0.95 : 0.55} />
+                  {/* 选中分支不再单独画岔线——人生曲线本身会穿过选项点 */}
+                  {!isTaken && (
+                    <path d={`M ${x} ${SPINE} C ${x + gapX * 0.2} ${SPINE}, ${x + gapX * 0.2} ${cy}, ${cx} ${cy}`}
+                          fill="none" stroke={col} strokeWidth="1.2"
+                          strokeDasharray="4 5" opacity="0.55" />
+                  )}
                   {isTaken
                     ? <circle cx={cx} cy={cy} r="5.5" fill={GOLD} />
                     : <g>
@@ -96,7 +130,6 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
                         fill={known ? '#cfc4a8' : DIM_TEXT}>
                     {known ? c.text : '？？？'}
                   </text>
-                  {/* 主导定案：不画"汇回主线"的收束曲线，选中分支停在选项点，观感更干净 */}
                 </g>
               )
             })}
