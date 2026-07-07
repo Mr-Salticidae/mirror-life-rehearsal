@@ -1,5 +1,7 @@
 import { Component, ReactNode, useEffect, useState } from 'react'
 import { useGame } from './store'
+import { NODES, CAREER_INFO } from './story'
+import { preloadStills } from './components/useStill'
 import AttractMode from './components/AttractMode'
 import Prologue from './components/Prologue'
 import TitleCard from './components/TitleCard'
@@ -52,11 +54,20 @@ function useDevJump() {
   }, [])
 }
 
+// 全部剧照：叙事节点在前（最先用到），职业前奏/结局/涂鸦墙其后
+const ALL_STILLS = [
+  ...Object.values(NODES).map(n => n.still),
+  ...Object.values(CAREER_INFO).flatMap(c => [c.introStill, c.endStill]),
+  'wall',
+]
+
 export default function App() {
   const phase = useGame(s => s.phase)
   const [muted, setM] = useState(isMuted())
   useIdleReset()
   useDevJump()
+  // 待机页起预热全部剧照，入场首帧直出真图（不再闪占位底图）
+  useEffect(() => { preloadStills(ALL_STILLS) }, [])
 
   const inCinema = phase !== 'attract' && phase !== 'game'
 
