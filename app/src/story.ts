@@ -100,8 +100,8 @@ export const CAREER_INFO: Record<Career, {
     typeCode: 'CNTV',
   },
   astronaut: {
-    name: '宇航员', title: '失重', game: 'dock',
-    gameHint: '← → 微调速度 · 空格制动（或按住屏幕左/中/右）· 把飞船送进对接窗口',
+    name: '宇航员', title: '失重', game: 'flight',
+    gameHint: '← → 移动 · 自动射击 · 躲避陨石与弹幕 · 拾取 P 升级火力',
     introStill: 'career_astronaut', endStill: 'end_astronaut',
     introLines: [
       '二十六岁，你终于飞过了七岁时用望远镜看过的地方。',

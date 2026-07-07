@@ -5,7 +5,7 @@ import FpsRange from '../games/FpsRange'
 import GraffitiWall from '../games/GraffitiWall'
 import NightDrive from '../games/NightDrive'
 import RhythmBeat from '../games/RhythmBeat'
-import Docking from '../games/Docking'
+import AstroBlaster from '../games/AstroBlaster'
 
 export default function GameHost() {
   const career = useGame(s => s.ending)
@@ -17,7 +17,7 @@ export default function GameHost() {
       {career === 'painter' && <GraffitiWall />}
       {career === 'racer' && <NightDrive />}
       {career === 'musician' && <RhythmBeat />}
-      {career === 'astronaut' && <Docking />}
+      {career === 'astronaut' && <AstroBlaster />}
     </div>
   )
 }
