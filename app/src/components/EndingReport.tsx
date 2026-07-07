@@ -31,6 +31,7 @@ export default function EndingReport() {
   const info = CAREER_INFO[ending]
   const endStill = useStill(info.endStill, info.palette, `结局·${info.name}`)
   const [report, setReport] = useState<Report | null>(null)
+  const [streamText, setStreamText] = useState('')
   const [cardUrl, setCardUrl] = useState<string | null>(null)
   const [showCard, setShowCard] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -70,42 +71,132 @@ export default function EndingReport() {
     generateReport({
       ending, overridden: g.overridden, regret: g.regret, timeouts: g.timeouts,
       path: g.path, gameScore: g.gameScore, gameDetail: g.gameDetail,
-    }).then(r => {
+    }, t => setStreamText(t)).then(r => {
       setReport(r)
       pushHall({ title, career: info.name, rank: g.gameRank ?? '—', score: g.gameScore })
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 分享卡预合成（blob URL，点击时同步下载）
+  // 分享海报预合成（附录 C 规格·竖版 1080×1440）：
+  // 顶部=类型代码+大称号 / 中部=结局剧照全幅+slogan 叠字 / 底部=4 轴微缩条+结语+二维码位+落款
   const composeCard = (rep: Report): Promise<string> => new Promise(resolve => {
     const W = 1080, H = 1440
+    const P_TOP = 330, P_H = 700 // 剧照带 330..1030
+    const BG = '#0a0d16'
     const cv = document.createElement('canvas')
     cv.width = W; cv.height = H
     const ctx = cv.getContext('2d')!
 
-    const finish = () => {
-      const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, H * 0.85)
-      vg.addColorStop(0, 'transparent'); vg.addColorStop(1, 'rgba(0,0,0,.78)')
-      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H)
-      ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, 0, W, H)
+    const finish = (img?: HTMLImageElement) => {
+      ctx.fillStyle = BG
+      ctx.fillRect(0, 0, W, H)
 
+      // ── 中部：结局剧照全幅（clip 进剧照带，上下缘与底色融合） ──
+      if (img) {
+        ctx.save()
+        ctx.beginPath(); ctx.rect(0, P_TOP, W, P_H); ctx.clip()
+        const s = Math.max(W / img.width, P_H / img.height)
+        ctx.drawImage(img, (W - img.width * s) / 2, P_TOP + (P_H - img.height * s) / 2,
+          img.width * s, img.height * s)
+        ctx.restore()
+      } else {
+        const pg = ctx.createLinearGradient(0, P_TOP, W, P_TOP + P_H)
+        pg.addColorStop(0, '#101624'); pg.addColorStop(1, '#05070d')
+        ctx.fillStyle = pg; ctx.fillRect(0, P_TOP, W, P_H)
+      }
+      let bl = ctx.createLinearGradient(0, P_TOP, 0, P_TOP + 90)
+      bl.addColorStop(0, BG); bl.addColorStop(1, 'rgba(10,13,22,0)')
+      ctx.fillStyle = bl; ctx.fillRect(0, P_TOP, W, 90)
+      bl = ctx.createLinearGradient(0, P_TOP + P_H - 120, 0, P_TOP + P_H)
+      bl.addColorStop(0, 'rgba(10,13,22,0)'); bl.addColorStop(1, BG)
+      ctx.fillStyle = bl; ctx.fillRect(0, P_TOP + P_H - 120, W, 120)
+
+      // slogan 叠字（剧照下缘）
       ctx.textAlign = 'center'
+      ctx.fillStyle = '#f2ede2'
+      ctx.font = '34px serif'
+      ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowBlur = 16
+      ctx.fillText(info.slogan, W / 2, P_TOP + P_H - 46)
+      ctx.shadowBlur = 0
+
+      // ── 顶部：类型代码 + 大称号（长称号自适应缩字号） ──
+      ctx.fillStyle = '#8fa8c8'
+      ctx.font = 'bold 34px monospace'
+      ctx.fillText(`TYPE ${typeCode}`, W / 2, 104)
+      ctx.fillStyle = '#f4efe4'
+      for (const fs of [82, 62, 48]) {
+        ctx.font = `bold ${fs}px serif`
+        if (ctx.measureText(title).width <= 740) break
+      }
+      ctx.fillText(title, W / 2, 216)
+      ctx.fillStyle = '#d8b878'
+      ctx.font = '28px serif'
+      ctx.fillText(`${info.name}的一生${g.gameRank ? ` · RANK ${g.gameRank}` : ''}`, W / 2, 278)
+      const dg = ctx.createLinearGradient(240, 0, 840, 0)
+      dg.addColorStop(0, 'transparent'); dg.addColorStop(0.5, '#c9a86a'); dg.addColorStop(1, 'transparent')
+      ctx.fillStyle = dg
+      ctx.fillRect(240, 306, 600, 1.5)
+
+      // 评级印章（右上）
+      if (g.gameRank) {
+        ctx.save()
+        ctx.translate(W - 148, 152)
+        ctx.rotate(-0.12)
+        ctx.strokeStyle = g.gameRank === 'S' ? '#ffd86a' : g.gameRank === 'A' ? '#8fd8ff' : '#b8c0cc'
+        ctx.fillStyle = ctx.strokeStyle
+        ctx.lineWidth = 4
+        ctx.beginPath(); ctx.arc(0, 0, 54, 0, Math.PI * 2); ctx.stroke()
+        ctx.lineWidth = 1.5
+        ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI * 2); ctx.stroke()
+        ctx.font = 'bold 58px serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(g.gameRank, 0, 21)
+        ctx.restore()
+        ctx.textAlign = 'center'
+      }
+
+      // ── 底部：4 轴微缩条（横排，带轴名） ──
+      const barW = (W - 260) / 4, barY = 1096
+      axes.forEach((a, i) => {
+        const x = 130 + i * barW + 12
+        const w = barW - 24
+        ctx.fillStyle = '#c9a86a'
+        ctx.font = '19px serif'
+        ctx.fillText(a.name, x + w / 2, barY - 18)
+        ctx.fillStyle = 'rgba(255,255,255,.15)'
+        ctx.fillRect(x, barY, w, 8)
+        ctx.fillStyle = '#d8b878'
+        ctx.fillRect(x, barY, w * a.pct / 100, 8)
+        ctx.fillStyle = '#b8ac90'
+        ctx.font = '20px serif'
+        ctx.fillText(`${a.l} ${a.pct}%`, x + w / 2, barY + 36)
+      })
+
+      // 给现实的你（结语，避开右下二维码位收窄行宽）
+      ctx.fillStyle = '#ece0c4'
+      ctx.font = 'italic 30px serif'
+      wrapText(ctx, `—— ${rep.finalWord}`, W / 2 - 70, 1210, W * 0.52, 48)
+
+      // 二维码位（右下；离线指向待定，先以镜面印章占位，框位即终版扫码框）
+      const QS = 136, qx = W - 90 - QS, qy = H - 90 - QS
+      ctx.strokeStyle = 'rgba(216,184,120,.75)'
+      ctx.lineWidth = 2
+      ctx.strokeRect(qx, qy, QS, QS)
+      ctx.lineWidth = 1
+      ctx.strokeRect(qx + 8, qy + 8, QS - 16, QS - 16)
+      ctx.fillStyle = 'rgba(216,184,120,.9)'
+      ctx.font = '56px serif'
+      ctx.fillText('镜', qx + QS / 2, qy + QS / 2 + 20)
+
+      // 落款（左下）
+      ctx.textAlign = 'left'
       ctx.fillStyle = '#c9a86a'
       ctx.font = '26px serif'
-      ctx.fillText('镜 像 自 我 · 人 生 预 演', W / 2, 118)
-      ctx.fillStyle = '#8fa8c8'
-      ctx.font = 'bold 30px monospace'
-      ctx.fillText(`TYPE ${typeCode}`, W / 2, 172)
-      ctx.fillStyle = '#f4efe4'
-      ctx.font = 'bold 92px serif'
-      ctx.fillText(info.name, W / 2, 300)
-      ctx.fillStyle = '#d8b878'
-      ctx.font = '40px serif'
-      ctx.fillText(`「${title}」`, W / 2, 390)
-      ctx.fillStyle = '#cfc9bb'
-      ctx.font = '26px serif'
-      ctx.fillText(info.slogan, W / 2, 446)
+      ctx.fillText('镜 像 自 我 · 人 生 预 演', 90, H - 134)
+      ctx.fillStyle = 'rgba(255,255,255,.4)'
+      ctx.font = '17px sans-serif'
+      ctx.fillText('POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD', 90, H - 96)
 
       // 双层金框
       ctx.strokeStyle = 'rgba(216,184,120,.7)'
@@ -114,57 +205,13 @@ export default function EndingReport() {
       ctx.lineWidth = 1
       ctx.strokeRect(50, 50, W - 100, H - 100)
 
-      // 评级印章
-      if (g.gameRank) {
-        ctx.save()
-        ctx.translate(W - 165, 210)
-        ctx.rotate(-0.12)
-        ctx.strokeStyle = g.gameRank === 'S' ? '#ffd86a' : g.gameRank === 'A' ? '#8fd8ff' : '#b8c0cc'
-        ctx.fillStyle = ctx.strokeStyle
-        ctx.lineWidth = 4
-        ctx.beginPath(); ctx.arc(0, 0, 58, 0, Math.PI * 2); ctx.stroke()
-        ctx.lineWidth = 1.5
-        ctx.beginPath(); ctx.arc(0, 0, 48, 0, Math.PI * 2); ctx.stroke()
-        ctx.font = 'bold 64px serif'
-        ctx.textAlign = 'center'
-        ctx.fillText(g.gameRank, 0, 24)
-        ctx.restore()
-        ctx.textAlign = 'center'
-      }
-
-      // 4 轴微缩条（横排）
-      const barW = (W - 260) / 4, barY = 1210
-      axes.forEach((a, i) => {
-        const x = 130 + i * barW + 12
-        const w = barW - 24
-        ctx.fillStyle = 'rgba(255,255,255,.15)'
-        ctx.fillRect(x, barY, w, 8)
-        ctx.fillStyle = '#d8b878'
-        ctx.fillRect(x, barY, w * a.pct / 100, 8)
-        ctx.fillStyle = '#b8ac90'
-        ctx.font = '20px serif'
-        ctx.fillText(`${a.l} ${a.pct}%`, x + w / 2, barY + 34)
-      })
-
-      ctx.fillStyle = '#ece0c4'
-      ctx.font = 'italic 32px serif'
-      wrapText(ctx, `—— ${rep.finalWord}`, W / 2, 1100, W * 0.7, 52)
-
-      ctx.fillStyle = 'rgba(255,255,255,.4)'
-      ctx.font = '22px sans-serif'
-      ctx.fillText('POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD', W / 2, H - 68)
-
       cv.toBlob(b => resolve(URL.createObjectURL(b!)), 'image/jpeg', 0.9)
     }
 
     const src = ending === 'painter' && g.graffitiData ? g.graffitiData : endStill
     const img = new Image()
-    img.onload = () => {
-      const s = Math.max(W / img.width, H / img.height)
-      ctx.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s)
-      finish()
-    }
-    img.onerror = () => { ctx.fillStyle = '#0a0e18'; ctx.fillRect(0, 0, W, H); finish() }
+    img.onload = () => finish(img)
+    img.onerror = () => finish()
     img.src = src
   })
 
@@ -211,6 +258,13 @@ export default function EndingReport() {
             </div>
             {report.paragraphs.map((p, i) => <p key={i}>{p}</p>)}
             <p className="final-word">{report.finalWord}</p>
+          </>
+        ) : streamText ? (
+          <>
+            <div className="honor" data-testid="honor">
+              「{title}」{g.gameRank && <> · RANK {g.gameRank}</>}
+            </div>
+            <div className="report-stream" data-testid="report-stream">{streamText}</div>
           </>
         ) : (
           <div className="report-loading">本地 AI 正在回放你的一生……</div>

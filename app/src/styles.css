@@ -386,6 +386,12 @@ button { font-family: inherit; cursor: pointer; }
 .report-actions button.primary { background: linear-gradient(120deg, #e8cf96, #c9a86a);
   color: #14100a; border: none; }
 .report-loading { font-size: 13px; letter-spacing: .4em; color: #8fa8c8; animation: pulseSoft 1.6s infinite; }
+/* 流式逐字：AI 生成中的打字机呈现 */
+.report-stream { font-size: 14.5px; line-height: 2.15; letter-spacing: .1em; color: #cfc9bb;
+  white-space: pre-wrap; text-align: justify; }
+.report-stream::after { content: ''; display: inline-block; width: 2px; height: 1em;
+  background: #c9a86a; vertical-align: -0.12em; margin-left: 4px;
+  animation: blink 0.85s steps(1) infinite; }
 
 /* 报告页小分支图 */
 .report-flow { width: min(34vw, 560px); }

@@ -44,11 +44,14 @@ function pathSummary(input: ReportInput): string {
     (input.timeouts > 0 ? `。犹豫（超时未选）${input.timeouts} 次` : '') + '。'
 }
 
-export async function generateReport(input: ReportInput): Promise<Report> {
+// 流式生成：onText 随生成进度收到累计全文（RTX 打字机演出）；离线模板也模拟逐字，观感一致
+export async function generateReport(input: ReportInput, onText?: (t: string) => void): Promise<Report> {
   const cfg = await loadConfig()
   try {
     const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), cfg.timeoutMs ?? 20000)
+    // 首包按配置超时，此后每个数据块刷新 15s 停滞计时（避免长生成被整体超时掐断）
+    let stall = window.setTimeout(() => ctrl.abort(), cfg.timeoutMs ?? 20000)
+    const bump = () => { clearTimeout(stall); stall = window.setTimeout(() => ctrl.abort(), 15000) }
     const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -60,31 +63,84 @@ export async function generateReport(input: ReportInput): Promise<Report> {
         model: cfg.model,
         temperature: 0.9,
         max_tokens: 700,
+        stream: true,
         messages: [
           {
             role: 'system',
             content:
               '你是《镜像自我·人生预演》的旁白，文风克制、电影感、第二人称，不用感叹号，不说教。' +
-              '根据玩家的人生选择轨迹，输出严格的 JSON（不要 markdown 代码块）：' +
-              '{"paragraphs":["童年段","少年段","结局段"],"finalWord":"给现实中的这个人的一句话，30字内"}。' +
-              '每段 60~90 字。若轨迹里有遗憾或犹豫，在少年段轻轻点到，不渲染。',
+              '根据玩家的人生选择轨迹输出纯文本（不要 JSON、不要 markdown、不要标题）：' +
+              '三段叙事——童年段、少年段、结局段，每段 60~90 字，段落之间用一个空行分隔；' +
+              '最后另起一段，以「——」开头，写给现实中这个人的一句话（30 字内）。' +
+              '若轨迹里有遗憾或犹豫，在少年段轻轻点到，不渲染。',
           },
           { role: 'user', content: pathSummary(input) },
         ],
       }),
     })
-    clearTimeout(timer)
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
-    const text: string = data.choices?.[0]?.message?.content ?? ''
-    const jsonStr = text.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(jsonStr)
-    if (!Array.isArray(parsed.paragraphs) || !parsed.finalWord) throw new Error('bad shape')
-    return { paragraphs: parsed.paragraphs.slice(0, 3), finalWord: parsed.finalWord, fromAI: true }
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+    const reader = res.body.getReader()
+    const dec = new TextDecoder()
+    let acc = '', buf = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      bump()
+      buf += dec.decode(value, { stream: true })
+      const lines = buf.split('\n')
+      buf = lines.pop() ?? ''
+      for (const ln of lines) {
+        const s = ln.trim()
+        if (!s.startsWith('data:')) continue
+        const payload = s.slice(5).trim()
+        if (payload === '[DONE]') continue
+        try {
+          const delta: string = JSON.parse(payload).choices?.[0]?.delta?.content ?? ''
+          if (delta) { acc += delta; onText?.(acc) }
+        } catch { /* SSE 半包，等下一块 */ }
+      }
+    }
+    clearTimeout(stall)
+    const parsed = parsePlain(acc)
+    if (!parsed) throw new Error('bad shape')
+    return { ...parsed, fromAI: true }
   } catch (e) {
     console.warn('[ai] 本地端点不可用，走模板兜底', e)
-    return templateReport(input)
+    const t = templateReport(input)
+    if (onText) await simulateStream(t, onText)
+    return t
   }
+}
+
+// 纯文本协议解析：空行分段，「——」起头段为结语；兼容模型偶发回退 JSON
+function parsePlain(text: string): { paragraphs: string[]; finalWord: string } | null {
+  const clean = text.replace(/```[a-z]*|```/g, '').trim()
+  if (!clean) return null
+  if (clean.startsWith('{')) {
+    try {
+      const p = JSON.parse(clean)
+      if (Array.isArray(p.paragraphs) && p.finalWord)
+        return { paragraphs: p.paragraphs.slice(0, 3), finalWord: p.finalWord }
+    } catch { /* 落回纯文本解析 */ }
+  }
+  const segs = clean.split(/\n{2,}/).map(s => s.trim()).filter(Boolean)
+  if (segs.length < 2) return null
+  let finalWord = ''
+  const fw = segs.findIndex(s => /^[—–\-]{1,2}/.test(s))
+  if (fw >= 0) { finalWord = segs[fw].replace(/^[—–\-]{1,2}\s*/, ''); segs.splice(fw, 1) }
+  if (!finalWord) finalWord = segs.pop()!
+  return { paragraphs: segs.slice(0, 3), finalWord }
+}
+
+// 离线模板的模拟流式（约 2.3s 播完），与真流式共用同一 UI
+async function simulateStream(r: Report, onText: (t: string) => void) {
+  const full = r.paragraphs.join('\n\n') + '\n\n—— ' + r.finalWord
+  const step = Math.max(2, Math.round(full.length / 90))
+  for (let i = step; i < full.length; i += step) {
+    onText(full.slice(0, i))
+    await new Promise(res => setTimeout(res, 25))
+  }
+  onText(full)
 }
 
 // ---------- 模板兜底 ----------
