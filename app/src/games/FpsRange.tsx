@@ -146,7 +146,16 @@ export default function FpsRange() {
         grp.add(sprite)
       }
       grp.add(body, head, post)
-      grp.position.set((Math.random() - 0.5) * 36, 0, -14 - Math.random() * 34)
+      // 出靶位置：随机后做最小间距(3.5)排斥检测，避免立牌彼此重叠；最多重抽 12 次，仍冲突则接受（兜底，保证密集时不至于不出靶）
+      let px = (Math.random() - 0.5) * 36
+      let pz = -14 - Math.random() * 34
+      for (let a = 0; a < 12; a++) {
+        const clash = targets.some(t => !t.dead && (t.grp.position.x - px) ** 2 + (t.grp.position.z - pz) ** 2 < 12.25 /* 3.5² */)
+        if (!clash) break
+        px = (Math.random() - 0.5) * 36
+        pz = -14 - Math.random() * 34
+      }
+      grp.position.set(px, 0, pz)
       grp.lookAt(0, 0, 0) // 立牌面向玩家
       grp.rotation.x = 0; grp.rotation.z = 0
       grp.scale.setScalar(0.01)
