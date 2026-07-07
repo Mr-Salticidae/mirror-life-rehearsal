@@ -379,8 +379,9 @@ button { font-family: inherit; cursor: pointer; }
 /* position:relative 让侧栏叠在绝对定位的剧照背景层之上——否则按钮看得见点不到 */
 .report-side { display: flex; flex-direction: column; gap: 3.5vh; align-items: center; max-width: 34vw;
   position: relative; }
-.report-actions { display: flex; gap: 16px; }
-.report-actions button { font-size: 13px; letter-spacing: .3em; padding: 13px 30px;
+.report-actions { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.report-actions button { font-size: 13px; letter-spacing: .3em; padding: 13px 22px;
+  white-space: nowrap;
   background: none; border: 1px solid rgba(255,255,255,.3); color: #e8e4da; transition: all .25s; }
 .report-actions button:hover { border-color: #d8b878; color: #f0e0b8; }
 .report-actions button.primary { background: linear-gradient(120deg, #e8cf96, #c9a86a);
@@ -392,6 +393,21 @@ button { font-family: inherit; cursor: pointer; }
 .report-stream::after { content: ''; display: inline-block; width: 2px; height: 1em;
   background: #c9a86a; vertical-align: -0.12em; margin-left: 4px;
   animation: blink 0.85s steps(1) infinite; }
+
+/* 报告卡·人生时间线：8 节点选择缩成横向人生轴（选择竖排悬挂，垂旗式） */
+.life-timeline { margin-top: 26px; padding-top: 16px; border-top: 1px solid rgba(201,168,106,.22); }
+.lt-title { font-size: 10.5px; letter-spacing: .5em; color: #c9a86a; margin-bottom: 14px; }
+.lt-axis { display: flex; position: relative; }
+.lt-axis::before { content: ''; position: absolute; left: 3%; right: 3%; top: 133px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(216,184,120,.55) 12%, rgba(216,184,120,.55) 88%, transparent); }
+.lt-item { flex: 1; min-width: 0; text-align: center; }
+.lt-choice { writing-mode: vertical-rl; height: 118px; margin: 0 auto 6px;
+  font-size: 10.5px; line-height: 1.2; color: #cfc4a8; letter-spacing: .1em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-choice.high { color: #cfc4a8; } /* 竖排后无需交错，保留类名兼容 */
+.lt-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: #d8b878; box-shadow: 0 0 8px rgba(216,184,120,.5); }
+.lt-place { font-size: 10px; color: #8a94a8; margin-top: 7px; letter-spacing: .12em; }
 
 /* 报告页小分支图 */
 .report-flow { width: min(34vw, 560px); }

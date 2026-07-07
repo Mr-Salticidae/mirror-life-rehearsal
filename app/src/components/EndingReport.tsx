@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../store'
-import { CAREER_INFO, Career, Stat, MAX_REACH } from '../story'
+import { CAREER_INFO, Career, Stat, MAX_REACH, NODES } from '../story'
 import { generateReport, Report } from '../lib/ai'
 import { computeTitle } from '../lib/titles'
 import { pushHall } from '../lib/hall'
@@ -63,6 +63,19 @@ export default function EndingReport() {
       .slice(0, 2)
       .map(({ c }) => ({ name: CAREER_INFO[c].name, slogan: CAREER_INFO[c].slogan }))
   }, [g.stats, ending])
+
+  // 人生时间线（P2）：8 节点选择按剧情序缩成横向人生轴
+  const timeline = useMemo(() => {
+    const order = ['A', 'B', 'F', 'C', 'G', 'D', 'H', 'E']
+    const byNode = new Map(g.path.map(p => [p.nodeId, p.choiceText]))
+    return order
+      .filter(id => byNode.has(id))
+      .map(id => ({
+        nodeId: id,
+        place: NODES[id].place,
+        choice: (byNode.get(id) ?? '').replace(/[「」"]/g, ''),
+      }))
+  }, [g.path])
 
   useEffect(() => {
     if (requested.current) return
@@ -258,6 +271,20 @@ export default function EndingReport() {
             </div>
             {report.paragraphs.map((p, i) => <p key={i}>{p}</p>)}
             <p className="final-word">{report.finalWord}</p>
+            {timeline.length > 0 && (
+              <div className="life-timeline" data-testid="life-timeline">
+                <div className="lt-title">人 生 时 间 线</div>
+                <div className="lt-axis">
+                  {timeline.map((s, i) => (
+                    <div className="lt-item" key={s.nodeId}>
+                      <div className={`lt-choice ${i % 2 ? 'high' : ''}`}>{s.choice}</div>
+                      <span className="lt-dot" />
+                      <div className="lt-place">{s.place}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         ) : streamText ? (
           <>
