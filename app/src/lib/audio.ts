@@ -29,7 +29,8 @@ export function startBgm() {
 let duckTween = 0
 export function duckBgm(on: boolean) {
   if (!bgmEl) return
-  const target = on ? 0.1 : 0.35
+  // 音效做减法后 BGM 需承担更多氛围，闪避幅度收窄
+  const target = on ? 0.2 : 0.35
   clearInterval(duckTween)
   duckTween = window.setInterval(() => {
     if (!bgmEl) { clearInterval(duckTween); return }
@@ -74,18 +75,20 @@ function noise(peak: number, decay: number, lowpass = 4000) {
   } catch { /* noop */ }
 }
 
+// 音效减法：砍掉所有振荡器"哔哔"层（square/sawtooth/高频短音是廉价感来源），
+// 只保留噪声质感音与低频层；接口不变，调用点零改动
 export const sfx = {
-  hover: () => tone(880, 'sine', 0.06, 0.08),
-  click: () => { tone(520, 'triangle', 0.12, 0.12); noise(0.05, 0.06, 6000) },
-  confirm: () => { tone(392, 'sine', 0.14, 0.35); tone(587.3, 'sine', 0.1, 0.45); tone(784, 'sine', 0.08, 0.6) },
-  ignite: () => { noise(0.12, 0.9, 1200); tone(196, 'sine', 0.12, 1.2); tone(392, 'sine', 0.06, 1.5) },
+  hover: () => {},
+  click: () => noise(0.06, 0.05, 5000),
+  confirm: () => noise(0.13, 0.2, 1400),
+  ignite: () => { noise(0.12, 0.9, 1200); tone(196, 'sine', 0.12, 1.2) },
   whoosh: () => noise(0.14, 0.5, 900),
-  tick: () => tone(1200, 'square', 0.045, 0.05),
+  tick: () => {},
   heartbeat: () => { tone(55, 'sine', 0.22, 0.18); setTimeout(() => tone(50, 'sine', 0.16, 0.16), 140) },
-  shot: () => { noise(0.2, 0.12, 3000); tone(140, 'square', 0.1, 0.1) },
-  hit: () => { tone(660, 'triangle', 0.14, 0.15); tone(990, 'sine', 0.08, 0.2) },
-  wrong: () => { tone(160, 'sawtooth', 0.14, 0.3); tone(110, 'sawtooth', 0.1, 0.4) },
+  shot: () => noise(0.14, 0.1, 2500),
+  hit: () => noise(0.09, 0.06, 5500),
+  wrong: () => { noise(0.16, 0.3, 600); tone(80, 'sine', 0.08, 0.25) },
   spray: () => noise(0.05, 0.15, 2500),
-  nitro: () => { tone(220, 'sawtooth', 0.1, 0.4); tone(440, 'sawtooth', 0.07, 0.5) },
-  crash: () => { noise(0.25, 0.4, 800); tone(80, 'square', 0.18, 0.35) },
+  nitro: () => noise(0.1, 0.35, 1500),
+  crash: () => { noise(0.25, 0.4, 800); tone(70, 'sine', 0.14, 0.3) },
 }
