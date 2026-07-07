@@ -17,13 +17,12 @@
 
 ## 1. Simple Mode Brief（先跑这个，求 happy accident）
 
-直接粘贴：
+直接粘贴（已压缩进 Simple 描述框的实用字符预算，并勾选 **Instrumental** 开关）：
 
 ```
-Late-night music for someone standing in front of a mirror, rehearsing
-the life they never lived. Warm golden melancholy over deep blue
-darkness — like memories playing in an empty theater. Gentle, cinematic,
-hopeful underneath the sadness, slowly breathing.
+Instrumental. Someone stands before a midnight mirror, rehearsing the
+life they never lived. Warm golden melancholy over deep blue darkness,
+cinematic and slowly breathing, hope underneath the sadness.
 ```
 
 **建议测试 2–3 次，审听时重点关注：**
@@ -35,26 +34,39 @@ hopeful underneath the sadness, slowly breathing.
 
 ## 2. Custom Mode Brief（Simple 找到方向后固化）
 
-```
-【Style / Genre】
-cinematic ambient, neoclassical piano, warm strings, nocturnal, slow
-tempo, sparse arrangement, instrumental, no vocals, no drums
+Style 框（逗号标签，节拍与动态写进标签而不是散文；**别忘了 Instrumental 开关**）：
 
-【Title】
+```
+cinematic ambient, minimalist neoclassical, emotive solo piano, warm ambient
+strings, nocturnal, 65 bpm, sparse arrangement, soft dynamics, quiet intro
+and quiet outro, seamless loop, instrumental, no vocals, no drums
+```
+
+Title：
+
+```
 Mirror Life Rehearsal (Main Theme)
-
-【Lyrics】
-[instrumental]
-
-【Key Parameters】
-- 结构：A(静谧钢琴) → B(弦乐渐入·微微抬升) → A'(回落收束)，首尾能量一致以便无缝循环
-- 贯穿动机：〔填 Simple Mode 发现的那个意外〕
-- 全程无鼓点或仅极轻的 sub pulse；高频克制（展会现场高频容易刺耳）
-- 情绪弧线：怀旧 70% + 希望 30%，结尾不解决到大调全亮
 ```
 
-> 版权过滤注意：不写艺人名/曲名。想要"久石让/Max Richter 那味"就写
-> "minimalist neoclassical, emotive piano over ambient strings"。
+Lyrics 框（纯配乐用**段落标签控编曲结构**——方括号内容不会被唱出，
+是给编曲的指令；这版结构就是"首尾能量一致可循环"的 A–B–A'）：
+
+```
+[Instrumental Intro: sparse solo piano, hushed]
+[Theme A: piano over a soft ambient pad, slow and tender]
+[Build: warm strings swell in gently, quiet hope rising]
+[Theme A reprise: strings recede, piano returns alone]
+[Outro: fades to the same hush as the intro]
+```
+
+迭代时的固化位（每轮只动一处）：
+- 贯穿动机：Simple Mode 发现的那个意外 → 写进 Style 标签（如 `recurring music box motif`）
+- 情绪弧线：怀旧 70% + 希望 30%，结尾不解决到大调全亮 → 不满意时在 [Outro] 标签里补
+  `unresolved, gentle`
+- 高频刺耳（展会现场大忌）→ Style 追加 `warm lo-fi texture, no bright highs`
+
+> 版权过滤注意：不写艺人名/曲名。想要"久石让/Max Richter 那味"，上面 Style 里的
+> "minimalist neoclassical, emotive solo piano over ambient strings" 就是它的合规写法。
 
 ## 3. 迭代协议（每轮只改一个变量）
 
