@@ -1,43 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../store'
-import { CAREER_INFO, Career, Stat, MAX_REACH, NODES } from '../story'
+import { CAREER_INFO, NODES } from '../story'
 import { stillUrl } from '../lib/placeholder'
 import { generateReport, Report } from '../lib/ai'
 import { computeTitle } from '../lib/titles'
 import { pushHall } from '../lib/hall'
+import { TRAIT_FLAVOR, STAT_ORDER, computeAxes, computeVariantTrait, computeAltLives } from '../lib/reportModel'
+import { SharePayload, buildShareUrl, paintQr } from '../lib/share'
 import FlowChart from './FlowChart'
 import { useStill } from './useStill'
 import { sfx } from '../lib/audio'
-
-// 结局印记：路线里第二强的倾向 = "你是哪一种{职业}"，决定海报变体剧照与印记文案
-// 变体图命名 end_{career}_{trait}.jpg（素材未落位时自动回退基础结局图，随放随生效）
-const TRAIT_FLAVOR: Record<Stat, { label: string; line: string }> = {
-  guard:  { label: '守望型', line: '把别人的安全，排在自己前面。' },
-  create: { label: '造梦型', line: '规则之外，总能画出另一条路。' },
-  swift:  { label: '疾风型', line: '等不及世界慢慢来。' },
-  rhythm: { label: '律动型', line: '心里始终有一支不停的拍子。' },
-  far:    { label: '远望型', line: '看的从来不是眼前这一步。' },
-}
-const OWN_STAT: Record<Career, Stat> = {
-  soldier: 'guard', painter: 'create', racer: 'swift', musician: 'rhythm', astronaut: 'far',
-}
-
-// GPTI 式 4 轴（基准：content/五结局扩容计划_db.md 附录 C/D）
-interface Axis { name: string; l: string; r: string; letters: [string, string]; pct: number }
-function computeAxes(s: Record<Stat, number>): { axes: Axis[]; typeCode: string } {
-  const defs: Array<Omit<Axis, 'pct'> & { L: number; R: number }> = [
-    { name: '核心驱动', l: '守', r: '创', letters: ['G', 'C'], L: s.guard, R: s.create + s.swift + s.rhythm + s.far },
-    { name: '目光所向', l: '远', r: '近', letters: ['F', 'N'], L: s.swift + s.far, R: s.guard + s.create + s.rhythm },
-    { name: '与世界的距离', l: '群', r: '独', letters: ['T', 'S'], L: s.guard + s.rhythm, R: s.create + s.swift + s.far },
-    { name: '生命节奏', l: '疾', r: '缓', letters: ['V', 'R'], L: s.swift + s.rhythm, R: s.guard + s.create + s.far },
-  ]
-  const axes = defs.map(d => ({
-    name: d.name, l: d.l, r: d.r, letters: d.letters,
-    pct: d.L + d.R > 0 ? Math.round((d.L / (d.L + d.R)) * 100) : 50,
-  }))
-  const typeCode = axes.map(a => (a.pct >= 50 ? a.letters[0] : a.letters[1])).join('')
-  return { axes, typeCode }
-}
 
 export default function EndingReport() {
   const g = useGame()
@@ -49,6 +21,9 @@ export default function EndingReport() {
   const [cardUrl, setCardUrl] = useState<string | null>(null)
   const [showCard, setShowCard] = useState(false)
   const [saved, setSaved] = useState(false)
+  // 扫码链接：undefined=构建中，null=构建失败（海报回退镜印章，侧栏隐藏）
+  const [shareUrl, setShareUrl] = useState<string | null | undefined>(undefined)
+  const qrCanvas = useRef<HTMLCanvasElement>(null)
   const requested = useRef(false)
 
   const title = useMemo(
@@ -64,14 +39,7 @@ export default function EndingReport() {
   }, [g.stats, info.typeCode])
 
   // 结局个性化：次强倾向选 end_{career}_{trait} 变体剧照，缺图回退基础图
-  const variantTrait = useMemo(() => {
-    const cands = (Object.keys(MAX_REACH) as Stat[])
-      .filter(st => st !== OWN_STAT[ending])
-      .map(st => ({ st, score: g.stats[st] / Math.sqrt(MAX_REACH[st]) }))
-      .filter(a => a.score > 0) // 运维直达全 0 → 无印记，走基础图
-      .sort((a, b) => b.score - a.score)
-    return cands[0]?.st ?? null
-  }, [g.stats, ending])
+  const variantTrait = useMemo(() => computeVariantTrait(g.stats, ending), [g.stats, ending])
   const variantId = variantTrait ? `${info.endStill}_${variantTrait}` : null
   const [variantOk, setVariantOk] = useState(false)
   useEffect(() => {
@@ -87,19 +55,7 @@ export default function EndingReport() {
   const flavor = variantTrait ? TRAIT_FLAVOR[variantTrait] : null
 
   // 镜子没给你的人生：归一化第 2/3 高的维度对应职业
-  const altLives = useMemo(() => {
-    const order: [Stat, Career][] = [
-      ['guard', 'soldier'], ['create', 'painter'], ['swift', 'racer'],
-      ['rhythm', 'musician'], ['far', 'astronaut'],
-    ]
-    return order
-      .filter(([, c]) => c !== ending)
-      .map(([st, c]) => ({ c, score: g.stats[st] / Math.sqrt(MAX_REACH[st]) }))
-      .filter(a => a.score > 0) // 0 分维度不算"差点走上的路"（运维直达时全 0，整节隐藏）
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 2)
-      .map(({ c }) => ({ name: CAREER_INFO[c].name, slogan: CAREER_INFO[c].slogan }))
-  }, [g.stats, ending])
+  const altLives = useMemo(() => computeAltLives(g.stats, ending), [g.stats, ending])
 
   // 人生时间线（P2）：8 节点选择按剧情序缩成横向人生轴
   const timeline = useMemo(() => {
@@ -128,9 +84,44 @@ export default function EndingReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // 扫码通道：报告就绪后把数据压进 URL 片段（离线模板只带种子，手机端同模板重生成；真 AI 全文上车）
+  useEffect(() => {
+    if (!report) return
+    let alive = true
+    const payload: SharePayload = {
+      v: 1, c: ending, ti: title, rk: g.gameRank,
+      s: STAT_ORDER.map(st => g.stats[st]),
+      tl: timeline.map(t => [t.nodeId, t.choice]),
+      sc: g.gameScore,
+      ...(report.fromAI
+        ? { ai: 1 as const, ps: report.paragraphs, fw: report.finalWord,
+            m: report.stats?.model, cs: report.stats?.charsPerSec }
+        : { ai: 0 as const, rg: g.regret ? 1 as const : 0 as const, gd: g.gameDetail }),
+    }
+    buildShareUrl(payload)
+      // QA 钩子：控制台可取 __shareUrl 直接验证手机页（展台排查用）
+      .then(url => { if (alive) { setShareUrl(url); (window as any).__shareUrl = url } })
+      .catch(e => { console.warn('[share] 扫码链接构建失败', e); if (alive) setShareUrl(null) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report])
+
+  // 侧栏大码（现场直接扫屏幕；2x 内部分辨率保证模块边缘清晰）
+  useEffect(() => {
+    if (!shareUrl || !qrCanvas.current) return
+    try {
+      const cv = qrCanvas.current
+      cv.width = 480; cv.height = 480
+      paintQr(cv.getContext('2d')!, shareUrl, 0, 0, 480)
+    } catch (e) {
+      console.warn('[share] 侧栏二维码绘制失败', e)
+      setShareUrl(null)
+    }
+  }, [shareUrl])
+
   // 分享海报预合成（附录 C 规格·竖版 1080×1440）：
   // 顶部=类型代码+大称号 / 中部=结局剧照全幅+slogan 叠字 / 底部=4 轴微缩条+结语+二维码位+落款
-  const composeCard = (rep: Report): Promise<string> => new Promise(resolve => {
+  const composeCard = (rep: Report, qrText: string | null): Promise<string> => new Promise(resolve => {
     const W = 1080, H = 1440
     const P_TOP = 330, P_H = 700 // 剧照带 330..1030
     const BG = '#0a0d16'
@@ -237,16 +228,27 @@ export default function EndingReport() {
       ctx.font = 'italic 30px serif'
       wrapText(ctx, `—— ${rep.finalWord}`, W / 2 - 70, 1210, W * 0.52, 48)
 
-      // 二维码位（右下；离线指向待定，先以镜面印章占位，框位即终版扫码框）
+      // 二维码（右下真码）：扫码手机查看完整图文报告；生成失败回退镜面印章
       const QS = 136, qx = W - 90 - QS, qy = H - 90 - QS
       ctx.strokeStyle = 'rgba(216,184,120,.75)'
       ctx.lineWidth = 2
-      ctx.strokeRect(qx, qy, QS, QS)
-      ctx.lineWidth = 1
-      ctx.strokeRect(qx + 8, qy + 8, QS - 16, QS - 16)
-      ctx.fillStyle = 'rgba(216,184,120,.9)'
-      ctx.font = '56px serif'
-      ctx.fillText('镜', qx + QS / 2, qy + QS / 2 + 20)
+      ctx.strokeRect(qx - 5, qy - 5, QS + 10, QS + 10)
+      let qrOk = false
+      if (qrText) {
+        try { paintQr(ctx, qrText, qx, qy, QS); qrOk = true }
+        catch (e) { console.warn('[share] 海报二维码生成失败，回退印章', e) }
+      }
+      if (qrOk) {
+        ctx.fillStyle = 'rgba(216,184,120,.85)'
+        ctx.font = '17px serif'
+        ctx.fillText('扫码 · 手机查看完整报告', qx + QS / 2, qy - 20)
+      } else {
+        ctx.lineWidth = 1
+        ctx.strokeRect(qx + 8, qy + 8, QS - 16, QS - 16)
+        ctx.fillStyle = 'rgba(216,184,120,.9)'
+        ctx.font = '56px serif'
+        ctx.fillText('镜', qx + QS / 2, qy + QS / 2 + 20)
+      }
 
       // 落款（左下）
       ctx.textAlign = 'left'
@@ -275,12 +277,12 @@ export default function EndingReport() {
   })
 
   useEffect(() => {
-    if (!report) return
+    if (!report || shareUrl === undefined) return // 等扫码链接定型（成功或失败）再合成，避免海报二次生成
     let alive = true
-    composeCard(report).then(url => { if (alive) setCardUrl(url); else URL.revokeObjectURL(url) })
+    composeCard(report, shareUrl).then(url => { if (alive) setCardUrl(url); else URL.revokeObjectURL(url) })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [report])
+  }, [report, shareUrl])
   useEffect(() => () => { if (cardUrl) URL.revokeObjectURL(cardUrl) }, [cardUrl])
 
   const exportCard = () => {
@@ -391,6 +393,15 @@ export default function EndingReport() {
             {altLives.map(a => (
               <div className="al-item" key={a.name}><b>{a.name}</b> —— {a.slogan}</div>
             ))}
+          </div>
+        )}
+        {shareUrl && (
+          <div className="qr-card" data-testid="qr-card">
+            <canvas ref={qrCanvas} />
+            <div className="qr-text">
+              <b>扫码带走这份人生</b>
+              <span>手机查看完整图文报告</span>
+            </div>
           </div>
         )}
         <div className="report-actions">

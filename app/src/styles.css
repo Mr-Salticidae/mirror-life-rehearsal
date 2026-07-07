@@ -423,6 +423,13 @@ button { font-family: inherit; cursor: pointer; }
 .report-actions button:hover { border-color: #d8b878; color: #f0e0b8; }
 .report-actions button.primary { background: linear-gradient(120deg, #e8cf96, #c9a86a);
   color: #14100a; border: none; }
+/* 扫码卡：现场直接扫屏幕带走报告（canvas 内部 480、显示 150，高密度码边缘保持锐利） */
+.qr-card { display: flex; align-items: center; gap: 16px; padding: 12px 18px 12px 12px;
+  border: 1px solid rgba(216,184,120,.5); background: rgba(216,184,120,.06); }
+.qr-card canvas { width: 150px; height: 150px; display: block; }
+.qr-card .qr-text { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.qr-card .qr-text b { font-size: 14px; letter-spacing: .25em; color: #f0e0b8; font-weight: 600; }
+.qr-card .qr-text span { font-size: 11px; letter-spacing: .2em; color: #b8ac90; }
 .report-loading { font-size: 13px; letter-spacing: .4em; color: #8fa8c8; animation: pulseSoft 1.6s infinite; }
 /* 流式逐字：AI 生成中的打字机呈现 */
 .report-stream { font-size: 14.5px; line-height: 2.15; letter-spacing: .1em; color: #cfc9bb;
