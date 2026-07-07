@@ -47,7 +47,8 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
   const order = ['A', 'B', 'F', 'C', 'G', 'D', 'H', 'E']
   const visible = mode === 'final' ? order : order.filter(id => doneNodes.has(id))
   const W = 1200, H = 560, SPINE = H / 2
-  const startX = 90, gapX = (W - 200) / Math.max(order.length - 1, 1)
+  // 节点跨度收窄到 W-320：给右侧结局框列留独立空间，E 节点的选项点/标签不再挤进结局区
+  const startX = 90, gapX = (W - 320) / Math.max(order.length - 1, 1)
   const nx = (i: number) => startX + i * gapX
 
   // 选项分支的纵向扇形位（避开主线，上下错开）——节点渲染与人生曲线共用
