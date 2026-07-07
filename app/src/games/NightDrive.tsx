@@ -146,12 +146,19 @@ export default function NightDrive() {
 
     // 输入
     let targetLane = 1
+    const steer = (dir: -1 | 1) => {
+      targetLane = Math.max(0, Math.min(2, targetLane + dir))
+      sfx.click()
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return
-      if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') { targetLane = Math.max(0, targetLane - 1); sfx.click() }
-      if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') { targetLane = Math.min(2, targetLane + 1); sfx.click() }
+      if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') steer(-1)
+      if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') steer(1)
     }
+    // 鼠标/触屏兜底：点按屏幕左/右半 = 向左/右变道
+    const onPtr = (e: PointerEvent) => steer(e.clientX < innerWidth / 2 ? -1 : 1)
     window.addEventListener('keydown', onKey)
+    window.addEventListener('pointerdown', onPtr)
 
     // 主循环
     const state = { dist: 0, speed: 26, nitro: 0, crashes: 0, nitroTaken: 0, shake: 0 }
@@ -268,6 +275,7 @@ export default function NightDrive() {
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('pointerdown', onPtr)
       window.removeEventListener('resize', onResize)
       renderer.dispose()
       scene.traverse(o => {

@@ -280,6 +280,14 @@ button { font-family: inherit; cursor: pointer; }
 .done-btn { margin-left: 22px; font-size: 13px; letter-spacing: .3em; color: #14100a;
   padding: 10px 26px; border: none; background: linear-gradient(120deg, #e8cf96, #c9a86a); }
 
+/* 触控操作区提示（对接/夜环线等键盘游戏的鼠标兜底） */
+.touch-zones { position: absolute; bottom: 8.5vh; left: 0; right: 0; z-index: 30;
+  display: flex; justify-content: center; gap: 14vw; pointer-events: none; }
+.touch-zones span { font-size: 12px; letter-spacing: .4em; color: #ffffff3d;
+  padding: 8px 18px; border: 1px solid #ffffff1f; transition: all .2s; }
+.touch-zones span.on { color: #e8cf96; border-color: #d8b87888;
+  box-shadow: 0 0 22px rgba(216,184,120,.25); background: rgba(216,184,120,.08); }
+
 /* 准星 */
 .crosshair { position: absolute; top: 50%; left: 50%; z-index: 28; width: 26px; height: 26px;
   transform: translate(-50%, -50%); pointer-events: none; }

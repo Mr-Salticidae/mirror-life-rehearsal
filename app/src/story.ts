@@ -75,7 +75,7 @@ export const CAREER_INFO: Record<Career, {
   },
   racer: {
     name: '赛车手', title: '夜环线', game: 'race',
-    gameHint: '← → 或 A D 转向 · 躲开车流 · 蓝色光点是氮气',
+    gameHint: '← → 或 A D 转向（或点按屏幕左/右侧）· 躲开车流 · 蓝色光点是氮气',
     introStill: 'career_racer', endStill: 'end_racer',
     introLines: [
       '二十六岁，你终于攒够了改装费。',
@@ -101,7 +101,7 @@ export const CAREER_INFO: Record<Career, {
   },
   astronaut: {
     name: '宇航员', title: '失重', game: 'dock',
-    gameHint: '← → 微调速度 · 空格制动 · 把飞船送进对接窗口',
+    gameHint: '← → 微调速度 · 空格制动（或按住屏幕左/中/右）· 把飞船送进对接窗口',
     introStill: 'career_astronaut', endStill: 'end_astronaut',
     introLines: [
       '二十六岁，你终于飞过了七岁时用望远镜看过的地方。',

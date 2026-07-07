@@ -96,11 +96,7 @@ export default function FlowChart({ mode }: { mode: 'interlude' | 'final' }) {
                         fill={known ? '#cfc4a8' : DIM_TEXT}>
                     {known ? c.text : '？？？'}
                   </text>
-                  {/* 走过的分支汇回主线 */}
-                  {isTaken && i < order.length - 1 && (doneNodes.has(order[i + 1]) || mode === 'final') && (
-                    <path d={`M ${cx} ${cy} C ${x + gapX * 0.7} ${cy}, ${x + gapX * 0.7} ${SPINE}, ${nx(i + 1)} ${SPINE}`}
-                          fill="none" stroke={GOLD} strokeWidth="2" opacity="0.7" />
-                  )}
+                  {/* 主导定案：不画"汇回主线"的收束曲线，选中分支停在选项点，观感更干净 */}
                 </g>
               )
             })}

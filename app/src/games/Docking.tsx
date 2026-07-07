@@ -16,6 +16,7 @@ export default function Docking() {
   const [hud, setHud] = useState({ dist: 120, vel: 8, fuel: 100, hold: 0 })
   const [timeLeft, setTimeLeft] = useState(DURATION)
   const [over, setOver] = useState<{ rank: Rank; ok: boolean } | null>(null)
+  const [ptrHint, setPtrHint] = useState<'retro' | 'brake' | 'accel' | null>(null)
 
   useEffect(() => {
     const mount = mountRef.current!
@@ -119,6 +120,28 @@ export default function Docking() {
     window.addEventListener('keydown', onDown)
     window.addEventListener('keyup', onUp)
 
+    // 鼠标/触屏兜底：按住屏幕 左/中/右 = 减速/制动/加速（键盘焦点丢失或展位无键盘时仍可玩）
+    type Zone = 'retro' | 'brake' | 'accel'
+    let ptrZone: Zone | null = null
+    const zoneAt = (x: number): Zone => x < innerWidth * 0.38 ? 'retro' : x > innerWidth * 0.62 ? 'accel' : 'brake'
+    const press = (z: Zone) => {
+      if (!keys[z] && !ended.current) st.corrections++
+      keys[z] = true; ptrZone = z; setPtrHint(z)
+    }
+    const release = () => {
+      if (ptrZone) { keys[ptrZone] = false; ptrZone = null; setPtrHint(null) }
+    }
+    const onPtrDown = (e: PointerEvent) => press(zoneAt(e.clientX))
+    const onPtrMove = (e: PointerEvent) => {
+      if (!ptrZone) return
+      const z = zoneAt(e.clientX)
+      if (z !== ptrZone) { keys[ptrZone] = false; press(z) }
+    }
+    window.addEventListener('pointerdown', onPtrDown)
+    window.addEventListener('pointermove', onPtrMove)
+    window.addEventListener('pointerup', release)
+    window.addEventListener('pointercancel', release)
+
     let thrustSfxAcc = 0
     const t0 = performance.now()
     let last = t0, raf = 0
@@ -201,6 +224,10 @@ export default function Docking() {
       cancelAnimationFrame(raf)
       window.removeEventListener('keydown', onDown)
       window.removeEventListener('keyup', onUp)
+      window.removeEventListener('pointerdown', onPtrDown)
+      window.removeEventListener('pointermove', onPtrMove)
+      window.removeEventListener('pointerup', release)
+      window.removeEventListener('pointercancel', release)
       window.removeEventListener('resize', onResize)
       renderer.dispose()
       scene.traverse(o => {
@@ -232,7 +259,16 @@ export default function Docking() {
       {hud.dist >= 118 && !over && (
         <div className="game-overlay-msg" style={{ pointerEvents: 'none', background: 'rgba(0,0,0,.5)' }}>
           <div className="big">失 重</div>
-          <div className="game-hint">← 减速 · → 加速 · 空格强制动 · 距离 ≤6m 且速度 ≤1.2 保持 3 秒</div>
+          <div className="game-hint">← 减速 · → 加速 · 空格强制动（或按住屏幕 左/中/右）</div>
+          <div className="game-hint" style={{ opacity: .7 }}>距离 ≤6m 且速度 ≤1.2 保持 3 秒 = 对接</div>
+        </div>
+      )}
+      {/* 触控操作区：底部三分格提示，按住时对应格点亮 */}
+      {!over && (
+        <div className="touch-zones" aria-hidden>
+          <span className={ptrHint === 'retro' ? 'on' : ''}>◂ 减 速</span>
+          <span className={ptrHint === 'brake' ? 'on' : ''}>制 动</span>
+          <span className={ptrHint === 'accel' ? 'on' : ''}>加 速 ▸</span>
         </div>
       )}
       {over && <RankSplash rank={over.rank} title={over.ok ? '对 接 成 功' : '进 近 超 时'}
