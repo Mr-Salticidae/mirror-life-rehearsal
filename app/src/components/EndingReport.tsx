@@ -240,6 +240,9 @@ export default function EndingReport() {
           <button className="primary" data-testid="save-card" onClick={exportCard} disabled={!cardUrl}>
             {saved ? '已保存 ✓' : cardUrl ? '保存分享卡' : '生成中…'}
           </button>
+          <button data-testid="retry-game" onClick={() => { sfx.confirm(); useGame.getState().retryGame() }}>
+            再试一次
+          </button>
           <button data-testid="restart" onClick={() => { sfx.whoosh(); useGame.getState().toAttract() }}>
             重新预演
           </button>

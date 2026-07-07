@@ -44,6 +44,7 @@ export default function RhythmBeat() {
     const ctx = cv.getContext('2d')!
     const notes = buildChart()
     const st = { combo: 0, maxCombo: 0, hits: 0, score: 0, flash: [0, 0, 0, 0], pulse: 0, startAt: 0 }
+    const bursts: { x: number; y: number; r: number; life: number }[] = [] // 全连爆发光环
     const ended = { current: false }
 
     // 音频：鼓组合成 + 前瞻调度
@@ -124,6 +125,15 @@ export default function RhythmBeat() {
         const mult = st.combo >= 50 ? 8 : st.combo >= 25 ? 4 : st.combo >= 10 ? 2 : 1
         st.score += mult
         st.pulse = 1
+        // 二段高潮：升档瞬间全屏炸亮；×8 段位每次命中都放光环
+        if (st.combo === 25 || st.combo === 50) {
+          st.pulse = 2.6
+          st.flash = [1, 1, 1, 1]
+          sfx.nitro()
+        }
+        if (st.combo >= 50) {
+          bursts.push({ x: x0 + lane * laneW + laneW / 2, y: judgeY, r: 12, life: 1 })
+        }
         sfx.hit()
         setCombo(st.combo); setScore(st.score)
       } else {
@@ -192,6 +202,15 @@ export default function RhythmBeat() {
         ctx.shadowBlur = n.missed ? 0 : 14
         ctx.fillRect(x + 8, y - 9, laneW - 16, 18)
         ctx.shadowBlur = 0
+      }
+      // 全连爆发光环：×8 段位的每次命中在判定线扩散
+      for (let bi = bursts.length - 1; bi >= 0; bi--) {
+        const b = bursts[bi]
+        b.r += 5.5; b.life -= 0.045
+        if (b.life <= 0) { bursts.splice(bi, 1); continue }
+        ctx.strokeStyle = `rgba(232,207,150,${b.life * 0.7})`
+        ctx.lineWidth = 2.5
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke()
       }
       // 结束
       if (st.startAt && left <= 0 && !ended.current) {

@@ -179,6 +179,7 @@ export default function FpsRange() {
     // 主循环（首次锁定视角后才开始计时/出靶）
     let raf = 0
     let spawnAcc = 0, last = performance.now()
+    let surged = false // 二段高潮只触发一次
     const endedRef = { current: false }
     const loop = () => {
       raf = requestAnimationFrame(loop)
@@ -189,12 +190,14 @@ export default function FpsRange() {
       const left = Math.max(0, DURATION - elapsed)
       setTimeLeft(Math.ceil(left))
 
-      // 生成靶子：随时间加速
+      // 生成靶子：随时间加速；二段高潮（32s 起）平民大量混入，逼玩家看清再开枪
       if (started) {
+        if (elapsed > 32 && !surged) { surged = true; sfx.heartbeat() }
         spawnAcc += dt
         const interval = Math.max(520, 1150 - elapsed * 10)
         if (spawnAcc > interval && targets.filter(t => !t.dead).length < 6) {
-          spawnAcc = 0; mkTarget()
+          spawnAcc = 0
+          mkTarget(Math.random() < (elapsed > 32 ? 0.48 : 0.28))
         }
       }
       // 靶子生命周期
@@ -266,6 +269,10 @@ export default function FpsRange() {
         <span>剩余 <b>{timeLeft}s</b></span>
       </div>
       <div className="crosshair" />
+      {/* 二段高潮警告：32s 起平民混入（timeLeft 60→28 为触发点，横幅显示约 5s） */}
+      {locked && !over && timeLeft <= 28 && timeLeft > 23 && (
+        <div className="surge-banner">人 群 涌 入 靶 区 —— 看 清 再 开 枪</div>
+      )}
       {!locked && !over && (
         <div className="game-overlay-msg" style={{ pointerEvents: 'none' }}>
           <div className="big">守 夜</div>

@@ -39,6 +39,7 @@ interface GameState {
   recordTimeout(nodeId: string, regret?: boolean): void
   chooseEnding(e: Ending, overridden: boolean): void
   finishGame(score: number, detail: string, rank: Rank): void
+  retryGame(): void
   setGraffiti(d: string): void
 }
 
@@ -86,5 +87,7 @@ export const useGame = create<GameState>((set, get) => ({
   }),
   chooseEnding: (e, overridden) => set({ ending: e, overridden }),
   finishGame: (score, detail, rank) => set({ gameScore: score, gameDetail: detail, gameRank: rank, phase: 'report' }),
+  // 再试一次：保留叙事轨迹与结局，只重开职业游戏刷分（P1·刷分入口）
+  retryGame: () => set({ gameScore: 0, gameRank: null, gameDetail: '', phase: 'game' }),
   setGraffiti: (d) => set({ graffitiData: d }),
 }))

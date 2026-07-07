@@ -190,11 +190,14 @@ export default function Docking() {
           st.wobble = 1
           sfx.crash()
         }
-        // 对接窗口
+        // 对接窗口（二段高潮·最后修正：读秒声 + 环灯呼吸脉冲，保持的 3 秒是全程最紧的 3 秒）
         const inWindow = st.dist <= 6 && Math.abs(st.vel) <= 1.2 && st.dist >= 0
+        const prevHold = st.hold
         st.hold = inWindow ? st.hold + dt : 0
-        ringGlow.intensity = inWindow ? 26 : 0
+        ringGlow.intensity = inWindow ? 22 + Math.sin(elapsed * 9) * 9 : 0
         ;(ring.material as THREE.MeshStandardMaterial).emissive.setHex(inWindow ? 0x22aa55 : 0x223344)
+        if (inWindow && Math.floor(st.hold) > Math.floor(prevHold)) sfx.tick()
+        if (!inWindow && prevHold > 0.4) sfx.wrong() // 到手的窗口飞了——最后修正失败的挫败音
         if (inWindow && st.hold >= 3) { st.docked = true; sfx.ignite(); end(true) }
         if (left <= 0) end(false)
         setHud({ dist: st.dist, vel: st.vel, fuel: st.fuel, hold: st.hold })
