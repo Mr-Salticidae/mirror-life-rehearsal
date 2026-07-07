@@ -310,23 +310,26 @@ export default function EndingReport() {
         )}
         <div className="axes-grid" data-testid="axes">
           {axes.map(a => {
-            // 占比高的一侧才是这条轴的"结论"（同事反馈）：金条锚定优势侧，优势端字符/数字高亮
-            const domL = a.pct >= 50
+            // 占比高的一侧在左、低的在右（同事反馈）：标签/百分比/金条统一按"高左低右"排列，高占比端高亮
+            const hiL = a.pct >= 50                 // l 占优则 l 留左，否则把 r 换到左侧
+            const left = hiL ? a.l : a.r
+            const right = hiL ? a.r : a.l
+            const lp = hiL ? a.pct : 100 - a.pct    // 左（高占比）
+            const rp = hiL ? 100 - a.pct : a.pct    // 右（低占比）
             return (
               <div className="axis-card" key={a.name}>
                 <div className="ax-name">{a.name}</div>
                 <div className="ax-ends">
-                  <span className={domL ? 'dom' : ''}>{a.l}</span>
-                  <span className={domL ? '' : 'dom'}>{a.r}</span>
+                  <span className="dom">{left}</span>
+                  <span>{right}</span>
                 </div>
                 <div className="ax-bar">
-                  <div className={`ax-fill${domL ? '' : ' right'}`}
-                       style={{ width: `${domL ? a.pct : 100 - a.pct}%` }} />
+                  <div className="ax-fill" style={{ width: `${lp}%` }} />
                 </div>
                 <div className="ax-pct">
-                  <span className={domL ? 'dom' : ''}>{a.pct}%</span>
+                  <span className="dom">{lp}%</span>
                   {' · '}
-                  <span className={domL ? '' : 'dom'}>{100 - a.pct}%</span>
+                  <span>{rp}%</span>
                 </div>
               </div>
             )
