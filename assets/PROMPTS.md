@@ -12,14 +12,15 @@ protagonist always seen from behind or in silhouette, face never visible
 ```
 
 > `--preview` = MJ v8.2 预览版，写实质感更强（已入知识库）。
-> 主角设定锚（跨图一致）：黑色短发；七岁=白色旧T恤；十七岁=蓝白校服外套；
+> 主角设定锚（跨图一致）：黑色短发；七岁=**干净**白T恤（⚠️ 勿写 worn/旧——MJ 会理解成脏污磨损，
+> 客户已投诉过一轮，见 docs/补丁_干净衣服重出_MJ+Seedance提示词.md）；十七岁=蓝白校服外套；
 > 二十五岁/职业线=按各 prompt 具体描述。全部背影/剪影，**绝不露正脸**。
 
 ## 叙事节点（5 张）
 
 ### node_a —— 七岁·巷口（黄昏暖调）
 ```
-a 7-year-old child in a worn white t-shirt seen from behind, standing in a narrow
+a 7-year-old child in a clean crisp white cotton t-shirt seen from behind, standing in a narrow
 Chinese alley at golden hour sunset, looking at a half-finished colorful graffiti
 mural glowing on an old brick wall, a bicycle rushing past in motion blur at the
 alley's end, an old TV glowing inside a corner electronics shop, warm dust
