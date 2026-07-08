@@ -1,4 +1,4 @@
-# 一键部署内测预览：构建 app/dist 并强推到公开预览仓库（GitHub Pages）
+﻿# 一键部署内测预览：构建 app/dist 并强推到公开预览仓库（GitHub Pages）
 # 预览地址: https://mr-salticidae.github.io/mirror-life-rehearsal-preview/
 # 说明: 预览仓库只存构建产物, 每次部署覆盖历史; 源码/剧本/协作文档均不出私有主仓库
 $ErrorActionPreference = 'Stop'
