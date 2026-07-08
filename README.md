@@ -18,6 +18,10 @@ npm run preview    # 本地预览构建产物
 
 ## 展位部署（离线）
 
+> 🎁 **推荐：一键部署包**（封版 v1.0）——`.\deploy-kiosk\打包展台.ps1` 产出自带便携 Node 的
+> zip，拷到目标机双击 `启动展台.bat` 即可，目标机零依赖；模型替换接口见包内 README_部署.md。
+> 以下为手动部署方式（备用）：
+
 1. `npm run build`，把 `app/dist` 拷到展位机（或直接整个仓库）。
 2. 静态服务任选其一：
    - `npm run preview`（vite 自带）

@@ -1,3 +1,5 @@
 node_modules/
 dist/
 *.tsbuildinfo
+
+镜像自我_展台部署包_*.zip

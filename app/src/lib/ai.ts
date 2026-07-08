@@ -29,7 +29,12 @@ export interface AiStats {
   charsPerSec: number
 }
 
-interface AiConfig { baseUrl: string; model: string; apiKey?: string; timeoutMs?: number }
+// 模型替换接口：public/config.json 全量可配，任何 OpenAI 兼容端点（本地 LM Studio/Ollama/vLLM 或云端中转）即插即用
+// baseUrl/model 必配；apiKey 云端用（勿提交进库）；temperature/maxTokens 按模型特性调（更强模型可放宽）
+interface AiConfig {
+  baseUrl: string; model: string; apiKey?: string; timeoutMs?: number
+  temperature?: number; maxTokens?: number
+}
 
 let cfgCache: AiConfig | null = null
 async function loadConfig(): Promise<AiConfig> {
@@ -70,8 +75,8 @@ export async function generateReport(input: ReportInput, onText?: (t: string) =>
       signal: ctrl.signal,
       body: JSON.stringify({
         model: cfg.model,
-        temperature: 0.9,
-        max_tokens: 700,
+        temperature: cfg.temperature ?? 0.9,
+        max_tokens: cfg.maxTokens ?? 700,
         stream: true,
         messages: [
           {
