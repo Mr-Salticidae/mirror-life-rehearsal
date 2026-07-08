@@ -7,7 +7,7 @@ import { sfx } from '../lib/audio'
 // 音乐人《躁动》：4 轨下落节奏，D F J K 或点击轨道接拍，20s（展会节奏，主导定）
 // 命中 +1（连击 8/15/30 → ×2/×4/×8 倍率计入总分展示），评级按命中率；S 另需最大连击 ≥36
 // （20s 谱面约 50+ 拍，连击档位与 S 门槛按原 60s 版比例缩放）
-const DURATION = 20
+const DURATION = 15
 const BPM = 112
 const LANES = 4
 const KEYS = ['d', 'f', 'j', 'k']

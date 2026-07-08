@@ -8,7 +8,7 @@ import { sfx } from '../lib/audio'
 
 // 军人《守夜》：夜间靶场，鼠标视角+点击射击，20s（展会节奏，主导定）
 // 红色标靶 +10（爆头 ×2）；白色平民靶 -15；连中有 streak 加成
-const DURATION = 20
+const DURATION = 15
 const SURGE_AT = 11 // 二段高潮起点（原 60s 版为 32s，按比例保持"过半后混入"的节拍）
 
 export default function FpsRange() {

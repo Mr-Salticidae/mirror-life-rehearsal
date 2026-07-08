@@ -7,7 +7,7 @@ import { sfx } from '../lib/audio'
 
 // 画家《一面墙》：喷漆创作，30s（其他游戏仍 20s，画家线单独放宽；可提前完成）
 // 作品导出 dataURL，合成进结局剧照
-const DURATION = 30
+const DURATION = 15
 const COLORS = ['#ff4d4d', '#ffb84d', '#ffe84d', '#5ce87a', '#4dc4ff', '#b06aff', '#ff6ad5', '#f5f0e8', '#181818']
 const SIZES = [14, 26, 44]
 

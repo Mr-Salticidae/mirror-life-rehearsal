@@ -9,7 +9,7 @@ import { sfx } from '../lib/audio'
 // 对接窗口：距离 ≤6m 且 |相对速度| ≤1.2m/s，保持 3s = 成功；触碰(距离<0)=碰撞反弹。
 // 评级：综合分 = 成功40 + 燃料%×0.6；S ≥85 且零碰撞；未对接超时 = B。
 // 20s 版（展会节奏，主导定）：初始距离 120→60m，容下"滑行-制动-保持3s"全弧线且留失误余量
-const DURATION = 20
+const DURATION = 15
 const INIT_DIST = 60
 
 export default function Docking() {

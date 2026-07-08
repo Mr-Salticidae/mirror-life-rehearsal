@@ -9,7 +9,7 @@ import { sfx } from '../lib/audio'
 // 陨石/无人机/拦截机/精英/BOSS，拾取 P/S/H/B，3 格船体 + 受击无敌帧，
 // 连击倍率、二段高潮「碎片风暴」、20s、对象池、圆形碰撞、程序化几何 + 复用 sfx。
 // 视觉复用 Docking 的星空 / 地球程序化做法；陨石/拾取/爆炸叠加 flight 素材包贴图（载入前程序化兜底）。
-const DURATION = 20
+const DURATION = 15
 const SURGE_AT = 10      // 碎片风暴起点
 const BOSS_AT = 14       // BOSS 刷出
 const BASE = import.meta.env.BASE_URL

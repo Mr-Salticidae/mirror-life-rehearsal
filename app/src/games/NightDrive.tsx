@@ -10,7 +10,7 @@ import { sfx } from '../lib/audio'
 const TRAFFIC_MODELS = ['sedan', 'taxi', 'van', 'suv', 'police', 'delivery', 'hatchback-sports']
 
 // 赛车手《夜环线》：雨夜三车道，←→/AD 变道躲车流，蓝色氮气加速，20s 距离计分（展会节奏，主导定）
-const DURATION = 20
+const DURATION = 15
 const LANES = [-3.2, 0, 3.2]
 // 模块加载即预取赛车模型：玩家走完序章进游戏时通常已缓存，配合下方 await → 第一帧即精细模型
 loadModel('models/cars/race.glb')
