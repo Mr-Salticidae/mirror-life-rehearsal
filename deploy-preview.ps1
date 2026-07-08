@@ -13,6 +13,18 @@ New-Item -ItemType Directory -Path $tmp | Out-Null
 Copy-Item "$root\app\dist\*" $tmp -Recurse
 New-Item -ItemType File -Path "$tmp\.nojekyll" | Out-Null
 
+# 安全闸：预览仓库是公开的。config.json 若配了 apiKey（本地端点用不上、云端 key 更不能公开），
+# 发布前强制剔除，防止密钥被推到公网。
+$cfgPath = Join-Path $tmp 'config.json'
+if (Test-Path $cfgPath) {
+  $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json
+  if ($cfg.PSObject.Properties['apiKey']) {
+    $cfg.PSObject.Properties.Remove('apiKey')
+    $cfg | ConvertTo-Json -Compress | Out-File $cfgPath -Encoding utf8
+    Write-Warning "config.json 里发现 apiKey，已从发布产物中剔除（公开预览站不允许携带任何密钥）"
+  }
+}
+
 $sha = git -C $root rev-parse --short HEAD
 Push-Location $tmp
 git init -q -b main

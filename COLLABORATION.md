@@ -65,6 +65,14 @@
 例：`节点_旧照片_zy.md`、`职业线_音乐人_db.md`、`游戏案_节奏按键_db.md`
 模板见 [content/TEMPLATES.md](content/TEMPLATES.md)。
 
+## 安全红线（所有人，包括代码侧）
+
+1. **`app/public/config.json` 永远不放 `apiKey` 或任何密钥。** 展台 AI 走本地端点（127.0.0.1）不需要 key；
+   预览站是**公开仓库**，`deploy-preview.ps1` 会把 config.json 原样发布上网。
+   部署脚本已加保险（发布前自动剔除 apiKey 字段），但第一道防线是根本不写进去。
+2. 任何 key / token / 密码都不进 git（主仓库虽私有，同样禁止——防口径混乱与历史残留）。
+3. 预览站上的一切（含剧本文本，它编译在 JS 里）都视为公开内容；不希望公开的东西不要部署上去。
+
 ## 五、协作流程
 
 1. `git clone https://github.com/Mr-Salticidae/mirror-life-rehearsal.git`
