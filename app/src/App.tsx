@@ -69,7 +69,7 @@ export default function App() {
   // 待机页起预热全部剧照，入场首帧直出真图（不再闪占位底图）
   useEffect(() => { preloadStills(ALL_STILLS) }, [])
 
-  const inCinema = phase !== 'attract' && phase !== 'game'
+  const inCinema = phase !== 'attract' && phase !== 'game' && phase !== 'report'
 
   return (
     <Boundary>
