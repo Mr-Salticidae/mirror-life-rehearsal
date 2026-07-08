@@ -4,7 +4,7 @@
 // 载荷瘦身策略：离线模板报告只带种子（rg/gd），叙事文本由手机端用同一模板重新生成；
 // 真 AI 报告文本唯一，必须全文上车（ps/fw）。
 import QRCode from 'qrcode'
-import { Career } from '../story'
+import { Career, CAREER_INFO } from '../story'
 
 export interface SharePayload {
   v: 1
@@ -79,7 +79,15 @@ export async function decodePayload(hash: string): Promise<SharePayload | null> 
       ? await pipeBytes(bytes, new DecompressionStream('deflate-raw'))
       : bytes
     const p = JSON.parse(new TextDecoder().decode(raw))
-    if (p?.v !== 1 || !p.c || !Array.isArray(p.s)) return null
+    // 载荷来自任意 URL（任何人都能构造链接），逐字段校验：非法职业/脏数据宁可回"报告没能展开"，不能让报告页崩溃
+    if (p?.v !== 1 || !Array.isArray(p.s)) return null
+    if (typeof p.c !== 'string' || !(p.c in CAREER_INFO)) return null
+    if (typeof p.ti !== 'string') return null
+    p.s = p.s.slice(0, 8).map((n: unknown) => (typeof n === 'number' && isFinite(n) ? n : 0))
+    if (!Array.isArray(p.tl)) p.tl = []
+    p.tl = p.tl.filter((t: unknown) =>
+      Array.isArray(t) && typeof t[0] === 'string' && typeof t[1] === 'string')
+    if (p.ps && !(Array.isArray(p.ps) && p.ps.every((s: unknown) => typeof s === 'string'))) p.ps = undefined
     return p as SharePayload
   } catch {
     return null

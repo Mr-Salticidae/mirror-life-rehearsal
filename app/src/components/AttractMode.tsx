@@ -5,13 +5,16 @@ import Dust from './Dust'
 import { sfx, startBgm } from '../lib/audio'
 
 // 性别入口图标：用户上传的男/女图标（仅图标，按钮无文字）。源文件 public/icons/{male,female}.png
+// 图标缺失/加载失败时回退符号，不能出现破图（这是全站唯一无占位兜底的资产位）
 const ICON_BASE = import.meta.env.BASE_URL
-function MaleIcon() {
-  return <img className="gender-icon" src={`${ICON_BASE}icons/male.png`} alt="" aria-hidden="true" />
+function GenderIcon({ file, fallback }: { file: string; fallback: string }) {
+  const [ok, setOk] = useState(true)
+  return ok
+    ? <img className="gender-icon" src={`${ICON_BASE}icons/${file}`} alt="" aria-hidden="true" onError={() => setOk(false)} />
+    : <span className="gender-icon" aria-hidden="true" style={{ fontSize: '2.2em', lineHeight: 1 }}>{fallback}</span>
 }
-function FemaleIcon() {
-  return <img className="gender-icon" src={`${ICON_BASE}icons/female.png`} alt="" aria-hidden="true" />
-}
+function MaleIcon() { return <GenderIcon file="male.png" fallback="♂" /> }
+function FemaleIcon() { return <GenderIcon file="female.png" fallback="♀" /> }
 export default function AttractMode() {
   const start = useGame(s => s.start)
   const [gender, setGender] = useState<Gender | null>(null)

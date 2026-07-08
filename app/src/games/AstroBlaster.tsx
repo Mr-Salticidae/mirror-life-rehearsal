@@ -313,8 +313,10 @@ export default function AstroBlaster() {
 
     const ended = { current: false }
     const survived = { current: DURATION }
+    let finishT = 0
+    let disposed = false
     const end = (died: boolean) => {
-      if (ended.current) return
+      if (ended.current || disposed) return
       ended.current = true
       st.score += Math.round(survived.current) * 2   // 存活秒数 × 2
       let rank = rankOf('flight', st.score)
@@ -323,14 +325,19 @@ export default function AstroBlaster() {
       setOver({ rank, died })
       sfx.confirm()
       const bossLine = st.bossKilled ? '（BOSS 已击沉）' : bossRef.current ? '（BOSS 仍在）' : ''
-      setTimeout(() => finishGame(st.score,
+      finishT = window.setTimeout(() => finishGame(st.score,
         `击毁 ${st.kills} 个目标${bossLine}，最长连击 ×${st.best}，剩余船体 ${Math.max(0, st.hull)}`, rank), 3000)
     }
+    // 异常/GPU 上下文丢失：按当前成绩提前结算，主流程不断
+    renderer.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); end(false) })
 
     let raf = 0, last = performance.now(), spawnAcc = 0, surged = false, bossSpawned = false
     const t0 = performance.now()
     const loop = () => {
       raf = requestAnimationFrame(loop)
+      try { tick() } catch (err) { console.error('[astro-blaster]', err); end(false) }
+    }
+    const tick = () => {
       const now = performance.now()
       const dt = Math.min(0.05, (now - last) / 1000); last = now
       const elapsed = (now - t0) / 1000
@@ -413,7 +420,7 @@ export default function AstroBlaster() {
           const ty = 16
           e.y += (ty - e.y) * Math.min(1, dt * 1.5)
           e.x = Math.sin(e.t * 0.55) * (SPAWN_X - 2)
-          setBossHp(Math.max(0, e.hp / e.maxhp))
+          if (!ended.current) setBossHp(Math.max(0, e.hp / e.maxhp))
           e.fireAcc += dt
           if (e.fireAcc > e.fireInterval) {
             e.fireAcc = 0; const n = 5
@@ -517,7 +524,9 @@ export default function AstroBlaster() {
     window.addEventListener('resize', onResize)
 
     return () => {
+      disposed = true
       cancelAnimationFrame(raf)
+      clearTimeout(finishT)
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('pointerdown', onPtrDown)
@@ -525,13 +534,14 @@ export default function AstroBlaster() {
       window.removeEventListener('pointerup', onPtrUp)
       window.removeEventListener('pointercancel', onPtrUp)
       window.removeEventListener('resize', onResize)
-      renderer.dispose()
       scene.traverse(o => {
         const m = o as THREE.Mesh
         if (m.geometry) m.geometry.dispose()
         if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach(mm => mm.dispose())
       })
       disposables.forEach(t => t.dispose())
+      renderer.dispose()
+      renderer.forceContextLoss()
       if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

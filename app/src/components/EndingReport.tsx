@@ -123,7 +123,8 @@ export default function EndingReport() {
   }, [shareUrl])
 
   // 分享海报预合成（附录 C 规格·竖版 1080×1440）：
-  // 顶部=类型代码+大称号 / 中部=结局剧照全幅+slogan 叠字 / 底部=4 轴微缩条+结语+二维码位+落款
+  // 顶部=类型代码+大称号 / 中部=结局剧照全幅+slogan 叠字 / 底部=人生时间线带+4 轴微缩条+结语+二维码位+落款
+  // 个性化：职业调色板点缀（TYPE/分隔线随结局换色）、时间线带、档案编号+日期、AI 溯源行
   const composeCard = (rep: Report, qrText: string | null): Promise<string> => new Promise(resolve => {
     const W = 1080, H = 1440
     const SCALE = 2 // 2x 渲染输出 2160×2880：海报二维码模块保真可扫（1x 下 ~1px/模块糊成灰），文字剧照同步锐化
@@ -172,7 +173,8 @@ export default function EndingReport() {
       ctx.shadowBlur = 0
 
       // ── 顶部：类型代码 + 大称号（长称号自适应缩字号） ──
-      ctx.fillStyle = '#8fa8c8'
+      // TYPE 行与分隔线用职业调色板高光色：五条线的海报一眼可分（个性化 · 阶段3）
+      ctx.fillStyle = info.palette[2]
       ctx.font = 'bold 34px monospace'
       ctx.fillText(`TYPE ${typeCode}`, W / 2, 104)
       ctx.fillStyle = '#f4efe4'
@@ -185,7 +187,7 @@ export default function EndingReport() {
       ctx.font = '28px serif'
       ctx.fillText(`${flavor ? flavor.label : ''}${info.name}的一生${g.gameRank ? ` · RANK ${g.gameRank}` : ''}`, W / 2, 278)
       const dg = ctx.createLinearGradient(240, 0, 840, 0)
-      dg.addColorStop(0, 'transparent'); dg.addColorStop(0.5, '#c9a86a'); dg.addColorStop(1, 'transparent')
+      dg.addColorStop(0, 'transparent'); dg.addColorStop(0.5, info.palette[2]); dg.addColorStop(1, 'transparent')
       ctx.fillStyle = dg
       ctx.fillRect(240, 306, 600, 1.5)
 
@@ -205,6 +207,18 @@ export default function EndingReport() {
         ctx.fillText(g.gameRank, 0, 21)
         ctx.restore()
         ctx.textAlign = 'center'
+      }
+
+      // ── 人生时间线带（剧照带与 4 轴之间）：8 站地点串成一行，走过的路上卡（个性化 · 阶段3） ──
+      if (timeline.length > 0) {
+        ctx.fillStyle = '#8fa8c8'
+        ctx.font = '17px serif'
+        const parts = timeline.map(t => t.place)
+        let strip = parts.join('  ·  ')
+        // 超宽先收间距再缩字号，保证一行放下
+        if (ctx.measureText(strip).width > W - 180) strip = parts.join(' · ')
+        if (ctx.measureText(strip).width > W - 180) ctx.font = '15px serif'
+        ctx.fillText(strip, W / 2, 1050)
       }
 
       // ── 底部：4 轴微缩条（横排，带轴名） ──
@@ -256,7 +270,7 @@ export default function EndingReport() {
         ctx.fillText('镜', qx + QS / 2, qy + QS / 2 + 20)
       }
 
-      // 落款（左下）
+      // 落款（左下）+ 档案编号/日期 + AI 溯源行（个性化 · 阶段3）
       ctx.textAlign = 'left'
       ctx.fillStyle = '#c9a86a'
       ctx.font = '26px serif'
@@ -264,6 +278,15 @@ export default function EndingReport() {
       ctx.fillStyle = 'rgba(255,255,255,.4)'
       ctx.font = '17px sans-serif'
       ctx.fillText('POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD', 90, H - 96)
+      const d = new Date()
+      const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+      const serial = `MLR-${ymd}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
+      const trace = rep.fromAI && rep.stats
+        ? `档案 ${serial} · RTX 本地 AI 实时生成 · ${rep.stats.charsPerSec} 字/秒 · 零云端请求`
+        : `档案 ${serial} · 离线预演档案`
+      ctx.fillStyle = 'rgba(216,184,120,.55)'
+      ctx.font = '15px monospace'
+      ctx.fillText(trace, 90, H - 64)
 
       // 双层金框
       ctx.strokeStyle = 'rgba(216,184,120,.7)'

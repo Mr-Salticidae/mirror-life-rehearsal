@@ -102,10 +102,14 @@ export default function StoryScene() {
     g().setPhase('flowchart')
   }
 
+  // 后果/谢幕定时器统一收口：组件卸载（异常恢复、闲置复位）后残留回调会把机器拽回叙事流，必须清
+  const sceneTimers = useRef<number[]>([])
+  useEffect(() => () => { sceneTimers.current.forEach(clearTimeout) }, [])
+
   // 谢幕渐黑后再执行切场，避免硬切
   const fadeOutThen = (after: () => void) => {
     setFading(true)
-    setTimeout(after, FADE_OUT_MS)
+    sceneTimers.current.push(window.setTimeout(after, FADE_OUT_MS))
   }
 
   const showConsequence = (text: string) => {
@@ -113,7 +117,7 @@ export default function StoryScene() {
     setConsequence(text)
     setBeat('consequence')
     sfx.whoosh()
-    setTimeout(() => fadeOutThen(finishNode), CONSEQUENCE_MS)
+    sceneTimers.current.push(window.setTimeout(() => fadeOutThen(finishNode), CONSEQUENCE_MS))
   }
 
   const onTimeout = () => {

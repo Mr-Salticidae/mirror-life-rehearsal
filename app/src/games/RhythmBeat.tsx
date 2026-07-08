@@ -176,8 +176,12 @@ export default function RhythmBeat() {
     window.addEventListener('pointerdown', onPointer)
 
     let raf = 0
+    let finishT = 0
     const loop = () => {
       raf = requestAnimationFrame(loop)
+      try { tick() } catch (err) { console.error('[rhythm-beat]', err) }
+    }
+    const tick = () => {
       const now = st.startAt ? performance.now() - st.startAt : 0
       const left = st.startAt ? Math.max(0, DURATION - now / 1000) : DURATION
       setTimeLeft(Math.ceil(left))
@@ -265,7 +269,7 @@ export default function RhythmBeat() {
         if (rank === 'S' && st.maxCombo < 36) rank = 'A' // S 双门槛：命中率 + 连击
         setOver({ rank, rate })
         sfx.confirm()
-        setTimeout(() => finishGame(rate,
+        finishT = window.setTimeout(() => finishGame(rate,
           `命中率 ${rate}% · 最大连击 ${st.maxCombo} · 总谱面 ${total} 拍`, rank), 3000)
       }
     }
@@ -275,6 +279,7 @@ export default function RhythmBeat() {
     window.addEventListener('resize', onResize)
     return () => {
       cancelAnimationFrame(raf)
+      clearTimeout(finishT)
       clearInterval(schedTimer)
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('pointerdown', onPointer)
@@ -296,6 +301,14 @@ export default function RhythmBeat() {
         <div className="game-overlay-msg" style={{ pointerEvents: 'none' }}>
           <div className="big">躁 动</div>
           <div className="game-hint">按 D F J K（或点击轨道）开始 · 音符落到金线时接拍</div>
+          {/* 兜底出口：与守夜/突围一致，观众弃玩时下一位可直接跳过，不依赖看门狗 */}
+          <button
+            className="skip-game" data-testid="skip-rhythm" style={{ pointerEvents: 'auto' }}
+            onPointerDown={e => e.stopPropagation()} // 先于 window 监听拦下，防误触发"首击即开始"
+            onClick={e => { e.stopPropagation(); sfx.click(); finishGame(0, '完成了一支安可', 'B') }}
+          >
+            跳 过 演 出 ▸
+          </button>
         </div>
       )}
       {over && <RankSplash rank={over.rank} title="安 可" sub={`命中率 ${over.rate}%`} />}
