@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useGame, Rank } from '../store'
 import { rankOf } from '../lib/titles'
-import { loadModel, cloneFit, cloneProp } from '../lib/models'
+import { loadModel, cloneFit } from '../lib/models'
 import RankSplash from '../components/RankSplash'
 import { sfx } from '../lib/audio'
 
@@ -12,6 +12,8 @@ const TRAFFIC_MODELS = ['sedan', 'taxi', 'van', 'suv', 'police', 'delivery', 'ha
 // 赛车手《夜环线》：雨夜三车道，←→/AD 变道躲车流，蓝色氮气加速，20s 距离计分（展会节奏，主导定）
 const DURATION = 20
 const LANES = [-3.2, 0, 3.2]
+// 模块加载即预取赛车模型：玩家走完序章进游戏时通常已缓存，配合下方 await → 第一帧即精细模型
+loadModel('models/cars/race.glb')
 
 export default function NightDrive() {
   const mountRef = useRef<HTMLDivElement>(null)
@@ -62,58 +64,7 @@ export default function NightDrive() {
         scene.add(d); dashes.push(d)
       }
     }
-    // 路侧灯柱 + 城市光带
-    const poles: THREE.Object3D[] = []
-    for (let i = 0; i < 16; i++) {
-      for (const side of [-1, 1]) {
-        const pole = new THREE.Group()
-        const post = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.08, 0.08, 5),
-          new THREE.MeshStandardMaterial({ color: 0x222831 }),
-        )
-        post.position.y = 2.5
-        const lamp = new THREE.Mesh(
-          new THREE.SphereGeometry(0.18),
-          new THREE.MeshBasicMaterial({ color: 0xffc880 }),
-        )
-        lamp.position.set(side * -0.6, 4.9, 0)
-        const light = new THREE.PointLight(0xffb868, 14, 18)
-        light.position.copy(lamp.position)
-        pole.add(post, lamp, light)
-        pole.position.set(side * 7.5, 0, -i * 24)
-        scene.add(pole); poles.push(pole)
-      }
-    }
-    // 灯柱换 Kenney 现代路灯（点光源保留），灯臂按包围盒偏心朝路心
-    loadModel('models/props/lightPostModern.glb').then(m => {
-      if (!m) return
-      for (const pole of poles) {
-        const meshes = pole.children.filter(c => (c as THREE.Mesh).isMesh)
-        meshes.forEach(c => pole.remove(c))
-        const prop = cloneProp(m, 5.2)
-        const box = new THREE.Box3().setFromObject(prop)
-        const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2
-        const armAngle = Math.atan2(cx, cz)                       // 灯臂当前朝向
-        const wantAngle = Math.sign(pole.position.x) * -Math.PI / 2 // 期望朝路心
-        prop.rotation.y = wantAngle - armAngle
-        pole.add(prop)
-      }
-    })
-    // 路缘护栏（白色反光段，按真实护栏高度 0.85m 缩放，随路面滚动循环）
-    const barriers: THREE.Object3D[] = []
-    loadModel('models/props/barrierWhite.glb').then(m => {
-      if (!m) return
-      for (let i = 0; i < 60; i++) {
-        for (const side of [-1, 1]) {
-          const b = cloneProp(m, 0.85)
-          // 长轴顺路（沿 z）
-          const s = new THREE.Box3().setFromObject(b).getSize(new THREE.Vector3())
-          if (s.x > s.z) b.rotation.y = Math.PI / 2
-          b.position.set(side * 6.6, 0, -i * 7)
-          scene.add(b); barriers.push(b)
-        }
-      }
-    })
+    // （路侧路灯 / 路缘护栏已按需求移除，不再生成）
     // 雨
     const rainN = 900
     const rainGeo = new THREE.BufferGeometry()
@@ -142,14 +93,8 @@ export default function NightDrive() {
     tail.position.set(0, 0.62, 1.72)
     const head1 = new THREE.SpotLight(0xcfe0ff, 260, 60, 0.42, 0.5)
     head1.position.set(0, 0.7, -1.6); head1.target.position.set(0, 0, -30)
-    car.add(chassis, cabin, tail, head1, head1.target)
+    car.add(tail, head1, head1.target)   // 车体待模型就绪后挂载（见循环启动处），灯光先就位照亮路面
     scene.add(car)
-    // 玩家车换 Kenney 赛车模型（载入即替换程序化楔形，灯光/尾灯保留）
-    loadModel('models/cars/race.glb').then(m => {
-      if (!m) return
-      car.remove(chassis, cabin)
-      car.add(cloneFit(m, 3.6, true))
-    })
 
     // 车流模型池预载
     const trafficPool: THREE.Group[] = []
@@ -212,8 +157,10 @@ export default function NightDrive() {
 
     // 主循环
     const state = { dist: 0, speed: 26, nitro: 0, crashes: 0, nitroTaken: 0, shake: 0 }
-    const t0 = performance.now()
-    let last = t0, raf = 0
+    let t0 = 0
+    let last = 0
+    let raf = 0
+    let disposed = false
     const ended = { current: false }
     const loop = () => {
       raf = requestAnimationFrame(loop)
@@ -253,8 +200,6 @@ export default function NightDrive() {
       // 世界滚动
       const dz = state.speed * dt
       for (const d of dashes) { d.position.z += dz; if (d.position.z > 6) d.position.z -= 360 }
-      for (const p of poles) { p.position.z += dz; if (p.position.z > 10) p.position.z -= 16 * 24 }
-      for (const b of barriers) { b.position.z += dz; if (b.position.z > 8) b.position.z -= 60 * 7 }
       for (const t of [...traffic]) { // 快照遍历：splice 原数组不会跳过下一辆
         t.grp.position.z += (state.speed - t.speed) * dt
         if (t.grp.position.z > 10) {
@@ -314,7 +259,14 @@ export default function NightDrive() {
       }
       renderer.render(scene, camera)
     }
-    loop()
+    // 赛车模型就绪后再开赛（顶层已预载，通常即时；离线/失败用楔形兜底）→ 第一帧即精细模型、永不先显楔形
+    loadModel('models/cars/race.glb').then(m => {
+      if (disposed) return
+      if (m) car.add(cloneFit(m, 3.6, true))
+      else car.add(chassis, cabin)
+      t0 = performance.now(); last = t0
+      loop()
+    })
 
     const onResize = () => {
       camera.aspect = innerWidth / innerHeight
@@ -324,6 +276,7 @@ export default function NightDrive() {
     window.addEventListener('resize', onResize)
 
     return () => {
+      disposed = true
       cancelAnimationFrame(raf)
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('pointerdown', onPtr)

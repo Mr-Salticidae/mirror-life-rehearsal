@@ -221,7 +221,7 @@ export default function FpsRange() {
       if (!m) return
       const gun = m.clone(true)
       gun.rotation.y = Math.PI / 2 + 0.42 // GLB 枪口朝 +x，转向前方(-z)再内倾——2.5D 挤出模型靠侧影认形，斜持让轮廓可读
-      gun.rotation.z = -0.52 // 原模型在展示场景里斜摆（枪管上翘约30°），滚转校平
+      // 不再做 z 滚转：原 rotation.z = -0.52 在 XYZ 欧拉下先作用，把 +x 枪口压向 -y（实测枪口朝下）；去掉后枪口水平朝前(-z)，符合持枪瞄准
       gun.scale.setScalar(0.42)
       gun.traverse(o => {
         const mesh = o as THREE.Mesh
