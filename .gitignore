@@ -3,3 +3,7 @@ dist/
 *.tsbuildinfo
 
 镜像自我_展台部署包_*.zip
+
+# 便携构建环境（体积大，不入库；用 hotfix/准备构建环境.ps1 获取）
+tools/node-portable/
+tools/*.zip

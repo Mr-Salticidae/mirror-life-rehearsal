@@ -13,14 +13,24 @@
 **不动的入口**：`?career=soldier` 调试直跳保留（现场排障仍可手动进哨兵线验证）。
 **已知外观残留**：报告前的流程图（FlowChart）右侧仍画五个结局框，哨兵框永远是暗态装饰，不可达、无交互——不影响观众流程，为降风险不改。
 
-## 应用步骤（约 3 分钟，需构建机有 Node）
+## 应用步骤（约 3 分钟）
+
+一键（推荐，自动处理 Node 环境——系统无 Node 时用 `tools/node-portable` 便携版，
+缺失会自动跑 `hotfix/准备构建环境.ps1` 下载）：
 
 ```powershell
 cd <仓库根目录>
+.\hotfix\一键应用方案A.ps1      # 应用补丁 + 构建，已全流程实测通过
+```
+
+手动等价步骤：
+
+```powershell
 git apply hotfix/方案A_哨兵线下线.patch
 cd app; npm run build          # tsc 类型检查 + vite 构建，已预验证通过
-cd ..; .\deploy-kiosk\打包展台.ps1   # 重新打包，或手动把 app/dist/* 覆盖到展台机 app/
 ```
+
+构建后二选一：`.\deploy-kiosk\打包展台.ps1` 重新打包，或手动把 `app/dist/*` 覆盖到展台机 `app/`。
 
 展台机上覆盖 `app/`（保留现场已改的 `config.json`！先备份再覆盖），刷新页面生效。
 
