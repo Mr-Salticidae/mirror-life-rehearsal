@@ -4,6 +4,9 @@
 > 前置：above-the-web 仓库的 deploy 工作流已加 /mlr/ 镜像步骤并推送生效
 > （CI 会把 mirror-life-rehearsal-preview 仓库整站镜像到 tiaozhuxiansheng.com/mlr/）。
 
+> 注：仓库内默认值已切换（打包脚本模板 / README / public/config.json），
+> **之后新打的包无需本操作**；本说明适用于装机当天已带到现场的旧部署包。
+
 ## 展台机操作（免重构建，1 分钟）
 
 编辑展台部署包 `app/config.json`，改一个字段：

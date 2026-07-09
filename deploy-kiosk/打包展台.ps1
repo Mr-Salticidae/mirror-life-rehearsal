@@ -36,7 +36,7 @@ Copy-Item $nodeExe "$pkg\tools\node\node.exe"
   "timeoutMs": 20000,
   "temperature": 0.9,
   "maxTokens": 700,
-  "reportBase": "https://mr-salticidae.github.io/mirror-life-rehearsal-preview/"
+  "reportBase": "https://tiaozhuxiansheng.com/mlr/"
 }
 '@ | Out-File "$pkg\app\config.json" -Encoding utf8
 
