@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "mirror-dev-portable",
-      "runtimeExecutable": "H:\\临时\\tools\\node\\npm.cmd",
-      "runtimeArgs": ["run", "dev", "--", "--port", "5193"],
+      "runtimeExecutable": "C:\\Users\\Administrator\\Desktop\\mirror-life-rehearsal\\tools\\node-portable\\node.exe",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5193"],
       "cwd": "app",
       "port": 5193,
       "autoPort": false
