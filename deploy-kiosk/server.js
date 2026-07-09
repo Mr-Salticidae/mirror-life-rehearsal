@@ -30,8 +30,10 @@ const server = http.createServer((req, res) => {
     const ext = path.extname(file).toLowerCase()
     const mime = MIME[ext] || 'application/octet-stream'
     const stat = fs.statSync(file)
-    // config.json 永不缓存（现场改端点/模型即时生效）；其余资产给长缓存（文件名带哈希/内容稳定）
-    const cache = path.basename(file) === 'config.json' ? 'no-store' : 'public, max-age=86400'
+    // config.json 与 html 永不缓存（现场改配置/切换止血构建后刷新即生效）；
+    // 其余资产给长缓存（文件名带哈希/内容稳定）
+    const noStore = path.basename(file) === 'config.json' || ext === '.html'
+    const cache = noStore ? 'no-store' : 'public, max-age=86400'
 
     const range = req.headers.range
     if (range && /^bytes=/.test(range)) {
@@ -52,6 +54,15 @@ const server = http.createServer((req, res) => {
     console.error('[server]', err.message)
     res.writeHead(500); res.end()
   }
+})
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[server] 端口 ${PORT} 已被占用——服务可能已在运行，请勿重复启动（或先跑 停止展台.bat）`)
+  } else {
+    console.error('[server]', err.message)
+  }
+  process.exit(1)
 })
 
 server.listen(PORT, '127.0.0.1', () => {
