@@ -49,6 +49,15 @@ export interface AiEndpoint { baseUrl: string; apiKey?: string; model: string }
 
 export const isLocalUrl = (u: string) => /^https?:\/\/(127\.|localhost|\[::1\])/.test(u)
 
+// 按模型代际选请求参数：gpt-5 推理系拒收 max_tokens/自定温度，要 max_completion_tokens（含推理预算，
+// 需在产出上限外多留余量）+ reasoning_effort（展台交互取 low：首包 ~2s，再高会明显变慢）；
+// 经典模型（gpt-4.x、本地 qwen 等）维持旧参数——降级链两端各用各的，互不影响
+export function completionParams(model: string, maxTokens: number, temperature: number): Record<string, unknown> {
+  if (/^gpt-5/i.test(model))
+    return { max_completion_tokens: maxTokens + 1500, reasoning_effort: 'low' }
+  return { max_tokens: maxTokens, temperature }
+}
+
 export function textEndpoints(cfg: AiConfig): AiEndpoint[] {
   const eps: AiEndpoint[] = [{ baseUrl: cfg.baseUrl, apiKey: cfg.apiKey, model: cfg.model }]
   if (cfg.fallbackBaseUrl && cfg.fallbackBaseUrl !== cfg.baseUrl)
@@ -119,8 +128,7 @@ export async function generateReport(input: ReportInput, onText?: (t: string) =>
       signal: ctrl.signal,
       body: JSON.stringify({
         model: ep.model,
-        temperature: cfg.temperature ?? 0.9,
-        max_tokens: cfg.maxTokens ?? 700,
+        ...completionParams(ep.model, cfg.maxTokens ?? 700, cfg.temperature ?? 0.9),
         stream: true,
         messages: [
           {

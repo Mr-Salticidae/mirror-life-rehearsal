@@ -2,7 +2,7 @@
 // 端点链见 ai.ts visionEndpoints：主端点（云端 API 或本地）→ 降级端点 → 模板兜底，观感一致。
 // 照片只以 dataURL 形式随本次请求发往配置的端点，不落盘、不进任何存储；
 // 端点链含云端时，上传页隐私文案会如实告知观众（visionMayGoRemote）。
-import { loadConfig, visionEndpoints, isLocalUrl, AiStats } from './ai'
+import { loadConfig, visionEndpoints, isLocalUrl, completionParams, AiStats } from './ai'
 import { Gender } from '../store'
 
 export interface CloseupPoint { label?: string; text: string }
@@ -117,8 +117,7 @@ export async function generateCloseup(
       signal: ctrl.signal,
       body: JSON.stringify({
         model: ep.model,
-        temperature: 0.5,
-        max_tokens: cfg.visionMaxTokens ?? 1100,
+        ...completionParams(ep.model, cfg.visionMaxTokens ?? 1100, 0.5),
         stream: true,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
