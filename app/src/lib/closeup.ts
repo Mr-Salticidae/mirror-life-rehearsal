@@ -17,6 +17,21 @@ export interface CloseupReport {
   stats?: AiStats
 }
 
+// 读心摘要：五段的副标题 + 总结正文，供终局报告个性化（入 store、进叙事提示词、上卡片/海报/扫码载荷）
+export interface CloseupDigest {
+  subs: { key: string; sub: string }[]  // 各段小标题（总结段无副标题不收）
+  summary: string                       // 05 总结正文（去 ** 标记）
+}
+export function digestCloseup(r: CloseupReport): CloseupDigest {
+  const strip = (t: string) => t.replace(/\*\*/g, '').trim()
+  return {
+    subs: r.sections
+      .filter(s => s.idx !== '05' && s.sub)
+      .map(s => ({ key: s.key, sub: strip(s.sub!) })),
+    summary: strip(r.sections.find(s => s.idx === '05')?.points.map(p => p.text).join('') ?? ''),
+  }
+}
+
 // 五段的段名固定在客户端，AI 只产副标题与要点——格式稳定，坏输出也砸不了版式
 const SECTION_META = [
   { idx: '01', key: '核心状态', keyEn: 'CORE STATE' },

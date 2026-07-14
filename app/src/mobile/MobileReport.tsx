@@ -75,6 +75,14 @@ export default function MobileReport({ p }: { p: SharePayload }) {
           : '离线预演档案'}
       </div>
 
+      {p.im && p.im.length > 0 && (
+        <section className="m-section">
+          <h2>镜 中 印 象</h2>
+          {p.im.map((t, i) => <div className="m-alt" key={i}>{t}</div>)}
+          {p.ims && <div className="m-alt">—— {p.ims}</div>}
+        </section>
+      )}
+
       <section className="m-body">
         {paragraphs.map((t, i) => <p key={i}>{t}</p>)}
         <p className="m-final">—— {finalWord}</p>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../store'
 import { sfx } from '../lib/audio'
-import { generateCloseup, CloseupSection, CloseupReport } from '../lib/closeup'
+import { generateCloseup, digestCloseup, CloseupSection, CloseupReport } from '../lib/closeup'
 
 // 镜中特写：拍照/上传 → 镜面扫描 → AI 读心五段（选完性别、进序幕之前）
 // 照片只存在本组件内存里，离开该阶段即随组件销毁；除发往 config.json 配置的本机端点外不去任何地方
@@ -70,6 +70,8 @@ export default function CloseupScene() {
     }).then(r => {
       if (runRef.current !== run) return
       setSections(r.sections); setReport(r)
+      // 真读心摘要入局：终局报告/卡片/海报据此个性化（模板兜底是通用文案，不入）
+      if (r.fromAI) useGame.getState().setCloseup(digestCloseup(r))
       sfx.ignite()
     })
   }

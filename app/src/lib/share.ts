@@ -21,6 +21,8 @@ export interface SharePayload {
   rg?: 0 | 1              // 遗憾标记（仅 ai=0，模板种子）
   gd?: string             // 职业体验短句（仅 ai=0，模板种子）
   sc?: number             // 游戏得分
+  im?: string[]           // 镜中印象小标题（≤3 条·截断，控制二维码密度）
+  ims?: string            // 镜中读心总结（截断）
 }
 
 // 手机报告页部署基址：默认内测预览站；public/config.json 可用 reportBase 覆盖（如换正式域名）
@@ -88,6 +90,8 @@ export async function decodePayload(hash: string): Promise<SharePayload | null> 
     p.tl = p.tl.filter((t: unknown) =>
       Array.isArray(t) && typeof t[0] === 'string' && typeof t[1] === 'string')
     if (p.ps && !(Array.isArray(p.ps) && p.ps.every((s: unknown) => typeof s === 'string'))) p.ps = undefined
+    if (p.im && !(Array.isArray(p.im) && p.im.every((s: unknown) => typeof s === 'string'))) p.im = undefined
+    if (p.ims !== undefined && typeof p.ims !== 'string') p.ims = undefined
     return p as SharePayload
   } catch {
     return null

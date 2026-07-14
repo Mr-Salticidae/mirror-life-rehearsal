@@ -3,6 +3,7 @@
 // 称号由本地称号池决定（lib/titles.ts），AI 只负责叙事段落与结语
 import { Ending, CAREER_INFO } from '../story'
 import { PathStep } from '../store'
+import type { CloseupDigest } from './closeup'
 
 export interface ReportInput {
   ending: Ending
@@ -12,6 +13,7 @@ export interface ReportInput {
   path: PathStep[]
   gameScore: number
   gameDetail: string
+  closeup?: CloseupDigest | null // 镜中特写读心摘要（真 AI 时才有）：织进叙事做真个性化
 }
 
 export interface Report {
@@ -55,9 +57,14 @@ function pathSummary(input: ReportInput): string {
   const endDesc = `最终职业：${CAREER_INFO[input.ending].name}` +
     (input.overridden ? '（在镜前换了一扇门）' : '（顺着预演走了进去）') +
     `。职业体验：${input.gameDetail}`
-  return `选择轨迹：${steps}。${endDesc}` +
+  let s = `选择轨迹：${steps}。${endDesc}` +
     (input.regret ? '。轨迹里有过一次没说出口的遗憾' : '') +
     (input.timeouts > 0 ? `。犹豫（超时未选）${input.timeouts} 次` : '') + '。'
+  if (input.closeup) {
+    const subs = input.closeup.subs.map(x => `${x.key}「${x.sub}」`).join('，')
+    s += `镜中读心（预演开始前对这位观众照片的真实观察）：${subs}。读心总结：${input.closeup.summary}`
+  }
+  return s
 }
 
 // 流式生成：onText 随生成进度收到累计全文（RTX 打字机演出）；离线模板也模拟逐字，观感一致
@@ -88,7 +95,9 @@ export async function generateReport(input: ReportInput, onText?: (t: string) =>
               '根据玩家的人生选择轨迹输出纯文本（不要 JSON、不要 markdown、不要标题）：' +
               '三段叙事——童年段、少年段、结局段，每段 60~90 字，段落之间用一个空行分隔；' +
               '最后另起一段，以「——」开头，写给现实中这个人的一句话（30 字内）。' +
-              '若轨迹里有遗憾或犹豫，在少年段轻轻点到，不渲染。',
+              '若轨迹里有遗憾或犹豫，在少年段轻轻点到，不渲染。' +
+              '若给了「镜中读心」观察，把其中一两处此刻的特质（神情、姿态、气质）自然织进结局段或结语，' +
+              '用呼应而非复述——让这个人在故事里认出今天的自己。',
           },
           { role: 'user', content: pathSummary(input) },
         ],
@@ -148,7 +157,10 @@ function parsePlain(text: string): { paragraphs: string[]; finalWord: string } |
         return { paragraphs: p.paragraphs.slice(0, 3), finalWord: p.finalWord }
     } catch { /* 落回纯文本解析 */ }
   }
-  const segs = clean.split(/\n{2,}/).map(s => s.trim()).filter(Boolean)
+  // 剥模型偶发加上的段名前缀（「童年段：」等）——协议要求无标题，7B 服从性一般
+  const segs = clean.split(/\n{2,}/)
+    .map(s => s.trim().replace(/^(童年段|少年段|结局段|结语)[：:]\s*/, ''))
+    .filter(Boolean)
   if (segs.length < 2) return null
   let finalWord = ''
   const fw = segs.findIndex(s => /^[—–\-]{1,2}/.test(s))

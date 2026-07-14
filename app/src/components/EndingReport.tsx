@@ -80,6 +80,7 @@ export default function EndingReport() {
     generateReport({
       ending, overridden: g.overridden, regret: g.regret, timeouts: g.timeouts,
       path: g.path, gameScore: g.gameScore, gameDetail: g.gameDetail,
+      closeup: g.closeup, // 镜中读心印象：AI 把此刻的特质织进这一生
     }, t => setStreamText(t)).then(r => {
       setReport(r)
       pushHall({ title, career: info.name, rank: g.gameRank ?? '—', score: g.gameScore })
@@ -100,6 +101,11 @@ export default function EndingReport() {
         ? { ai: 1 as const, ps: report.paragraphs, fw: report.finalWord,
             m: report.stats?.model, cs: report.stats?.charsPerSec }
         : { ai: 0 as const, rg: g.regret ? 1 as const : 0 as const, gd: g.gameDetail }),
+      // 镜中印象随码上手机（截断控制码密度：176px 框位是扫得出的底线）
+      ...(g.closeup
+        ? { im: g.closeup.subs.slice(0, 3).map(x => x.sub.slice(0, 24)),
+            ims: g.closeup.summary.slice(0, 80) }
+        : {}),
     }
     buildShareUrl(payload)
       // QA 钩子：控制台可取 __shareUrl 直接验证手机页（展台排查用）
@@ -162,6 +168,13 @@ export default function EndingReport() {
       // slogan 叠字（剧照下缘）；有印记时上方多一行个性化短句
       ctx.textAlign = 'center'
       ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowBlur = 16
+      // 镜中印象（真读心才有）：把"此刻的你"印上海报，最上一行
+      if (g.closeup?.subs.length) {
+        ctx.fillStyle = '#c8bfae'
+        ctx.font = 'italic 22px serif'
+        const imp = g.closeup.subs[0].sub.slice(0, 26)
+        ctx.fillText(`镜中印象 —— ${imp}`, W / 2, P_TOP + P_H - (flavor ? 136 : 92))
+      }
       if (flavor) {
         ctx.fillStyle = '#d8c9a8'
         ctx.font = 'italic 25px serif'
@@ -357,6 +370,11 @@ export default function EndingReport() {
         <h2>{flavor ? flavor.label : ''}{info.name}的一生</h2>
         <div className="slogan">{info.slogan}</div>
         {flavor && <div className="imprint" data-testid="imprint">印记 · {flavor.line}</div>}
+        {g.closeup && g.closeup.subs.length > 0 && (
+          <div className="imprint" data-testid="mirror-imprint">
+            镜中印象 · {g.closeup.subs.slice(0, 2).map(x => x.sub).join('；')}
+          </div>
+        )}
         {report ? (
           <>
             <div className="honor" data-testid="honor">
@@ -471,6 +489,7 @@ export default function EndingReport() {
           hero={bg}
           flavor={flavor}
           report={report}
+          closeup={g.closeup}
           timeline={timeline}
           axes={axes}
           altLives={altLives}

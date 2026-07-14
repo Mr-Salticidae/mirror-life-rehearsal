@@ -2,6 +2,7 @@ import { RefObject, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Career, CAREER_INFO } from '../story'
 import { Report } from '../lib/ai'
+import type { CloseupDigest } from '../lib/closeup'
 import { Axis } from '../lib/reportModel'
 import { paintQr } from '../lib/share'
 
@@ -50,6 +51,7 @@ interface Props {
   hero: string // 结局剧照（画家为现场涂鸦）
   flavor: { label: string; line: string } | null
   report: Report
+  closeup: CloseupDigest | null // 镜中特写读心摘要（真 AI 时才有）
   timeline: { nodeId: string; age: string; place: string; choice: string }[]
   axes: Axis[]
   altLives: { name: string; slogan: string }[]
@@ -103,6 +105,16 @@ export default function PrintReport(p: Props) {
             ? <>由展台 RTX 本地 AI 生成{p.report.stats ? ` · ${p.report.stats.charsPerSec} 字/秒 · 零云端请求` : ' · 零云端请求'}</>
             : '离线预演档案'}
         </div>
+
+        {p.closeup && p.closeup.subs.length > 0 && (
+          <section className="ps-section">
+            <h2>镜 中 印 象</h2>
+            {p.closeup.subs.map(x => (
+              <div className="ps-alt" key={x.key}><b>{x.key}</b> —— {x.sub}</div>
+            ))}
+            {p.closeup.summary && <div className="ps-alt">{p.closeup.summary}</div>}
+          </section>
+        )}
 
         <section className="ps-body">
           {p.report.paragraphs.map((t, i) => <p key={i}>{t}</p>)}

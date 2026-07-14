@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Ending, Stat, dominantStat } from './story'
+import type { CloseupDigest } from './lib/closeup'
 
 export type Phase =
   | 'attract'      // 待机吸引模式
@@ -33,8 +34,10 @@ interface GameState {
   gameDetail: string
   graffitiData: string | null
   gender: Gender | null      // 入口选的男/女，带入整段预演
+  closeup: CloseupDigest | null // 镜中特写真 AI 读心摘要（模板兜底不入局），个性化终局报告用
 
   start(gender?: Gender): void
+  setCloseup(d: CloseupDigest): void
   toAttract(): void
   setPhase(p: Phase): void
   enterChapter(i: number): void
@@ -65,21 +68,23 @@ export const useGame = create<GameState>((set, get) => ({
   gameDetail: '',
   graffitiData: null,
   gender: null,
+  closeup: null,
 
   // 起局先进「镜中特写」（拍照/上传 → AI 读心），读完或跳过再进序幕
   start: (gender?: Gender) => set({
     phase: 'closeup', nodeId: 'A', chapterIndex: 0,
     stats: initialStats(), path: [], regret: false, timeouts: 0, ending: null,
     overridden: false, gameScore: 0, gameRank: null, gameDetail: '', graffitiData: null,
-    gender: gender ?? null,
+    gender: gender ?? null, closeup: null,
   }),
   // 回待机即整局清零：异常/看门狗路径也可能走到这里，不能指望下一次 start() 才清
   toAttract: () => set({
     phase: 'attract', nodeId: 'A', chapterIndex: 0,
     stats: initialStats(), path: [], regret: false, timeouts: 0, ending: null,
     overridden: false, gameScore: 0, gameRank: null, gameDetail: '', graffitiData: null,
-    gender: null,
+    gender: null, closeup: null,
   }),
+  setCloseup: (d) => set({ closeup: d }),
   setPhase: (p) => set({ phase: p }),
   enterChapter: (i) => set({ chapterIndex: i, phase: 'chapter' }),
   enterNode: (id) => set({ nodeId: id, phase: 'story' }),
@@ -104,3 +109,6 @@ export const useGame = create<GameState>((set, get) => ({
   retryGame: () => set({ gameScore: 0, gameRank: null, gameDetail: '', phase: 'game' }),
   setGraffiti: (d) => set({ graffitiData: d }),
 }))
+
+// DEV 调试句柄：控制台/自动化测试直取真实 store 实例（HMR 后模块 URL 带时间戳，动态 import 会拿到孤立副本）
+if (import.meta.env.DEV) (window as unknown as { __game: typeof useGame }).__game = useGame
