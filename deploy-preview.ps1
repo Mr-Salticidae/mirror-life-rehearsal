@@ -13,15 +13,24 @@ New-Item -ItemType Directory -Path $tmp | Out-Null
 Copy-Item "$root\app\dist\*" $tmp -Recurse
 New-Item -ItemType File -Path "$tmp\.nojekyll" | Out-Null
 
-# 安全闸：预览仓库是公开的。config.json 若配了 apiKey（本地端点用不上、云端 key 更不能公开），
-# 发布前强制剔除，防止密钥被推到公网。
+# 安全闸：预览仓库是公开的。
+# ① config.local.json 是 apiKey 的家（构建会把 public/ 原样拷进 dist），发布产物必须整个删掉；
+$localCfg = Join-Path $tmp 'config.local.json'
+if (Test-Path $localCfg) {
+  Remove-Item $localCfg -Force
+  Write-Warning "已从发布产物中删除 config.local.json（apiKey 不允许上公网）"
+}
+# ② config.json 若配了 apiKey/visionApiKey（不该配在这，应放 config.local.json），发布前也强制剔除。
 $cfgPath = Join-Path $tmp 'config.json'
 if (Test-Path $cfgPath) {
   $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json
-  if ($cfg.PSObject.Properties['apiKey']) {
-    $cfg.PSObject.Properties.Remove('apiKey')
+  $dirty = $false
+  foreach ($k in @('apiKey', 'visionApiKey')) {
+    if ($cfg.PSObject.Properties[$k]) { $cfg.PSObject.Properties.Remove($k); $dirty = $true }
+  }
+  if ($dirty) {
     $cfg | ConvertTo-Json -Compress | Out-File $cfgPath -Encoding utf8
-    Write-Warning "config.json 里发现 apiKey，已从发布产物中剔除（公开预览站不允许携带任何密钥）"
+    Write-Warning "config.json 里发现 apiKey/visionApiKey，已从发布产物中剔除（公开预览站不允许携带任何密钥）"
   }
 }
 

@@ -102,17 +102,25 @@ export default function EndingReport() {
             cs: report.stats?.charsPerSec }
         : { ai: 0 as const, rg: g.regret ? 1 as const : 0 as const, gd: g.gameDetail }),
     }
-    // 镜中印象按码密度预算上车（完整一局的载荷本就逼近 v22 上限）：
-    // 超预算逐级降配——先丢读心总结，再丢印象小标题；叙事全文永不降（手机页的主体）。
-    // 屏幕/海报/打印四处的印象呈现不受影响。
-    const variants: SharePayload[] = g.closeup
-      ? [
-          { ...base, im: g.closeup.subs.slice(0, 3).map(x => x.sub.slice(0, 16)),
-            ims: g.closeup.summary.slice(0, 80) },
-          { ...base, im: g.closeup.subs.slice(0, 3).map(x => x.sub.slice(0, 16)) },
-          base,
-        ]
-      : [base]
+    // 码密度预算降配（云端叙事字数足，完整一局的基础载荷都可能超预算）：
+    // 逐级丢——读心总结 → 印象小标题 → 时间线选择截短 → 时间线整体；叙事全文永不降（手机页的主体）。
+    // 屏幕/海报/打印的印象与时间线呈现不受影响，只影响扫码带走的数据量。
+    const trimTl = (p: SharePayload): SharePayload =>
+      ({ ...p, tl: p.tl.map(([n, c]) => [n, c.slice(0, 6)] as [string, string]) })
+    const noTl = (p: SharePayload): SharePayload => ({ ...p, tl: [] })
+    const im = g.closeup
+      ? { im: g.closeup.subs.slice(0, 3).map(x => x.sub.slice(0, 16)) }
+      : {}
+    const variants: SharePayload[] = [
+      ...(g.closeup
+        ? [{ ...base, ...im, ims: g.closeup.summary.slice(0, 80) },
+           { ...base, ...im },
+           trimTl({ ...base, ...im })]
+        : []),
+      base,
+      trimTl(base),
+      noTl(base),
+    ]
     ;(async () => {
       let url = ''
       for (const p of variants) {
@@ -274,8 +282,10 @@ export default function EndingReport() {
       wrapText(ctx, `—— ${rep.finalWord}`, W / 2 - 70, 1210, W * 0.52, 48)
 
       // 二维码（右下真码）：扫码手机查看完整图文报告；生成失败回退镜面印章
-      // 框位 176px（原 136 在成图上密度过高扫不出，主导实测），静区/整数模块见 paintQr
-      const QS = 176, qx = W - 90 - QS, qy = H - 90 - QS
+      // 框位按链接长度自适应（密度守恒）：176px 对应 ≤v22（主导实测的可扫基线），
+      // 链接更长则码更复杂，等比放大框位维持每模块像素数——云端叙事字数足时降配后仍可能到 v24+
+      const QS = !qrText ? 176 : qrText.length <= 1003 ? 176 : qrText.length <= 1091 ? 184 : 208
+      const qx = W - 90 - QS, qy = H - 90 - QS
       ctx.strokeStyle = 'rgba(216,184,120,.75)'
       ctx.lineWidth = 2
       ctx.strokeRect(qx - 5, qy - 5, QS + 10, QS + 10)
@@ -287,7 +297,9 @@ export default function EndingReport() {
       if (qrOk) {
         ctx.fillStyle = 'rgba(216,184,120,.85)'
         ctx.font = '17px serif'
-        ctx.fillText('扫码 · 手机查看完整报告', qx + QS / 2, qy - 16)
+        // 大框位时提示语移到码下方，避免撞上方 4 轴的百分比标签
+        if (QS > 184) ctx.fillText('扫码 · 手机查看完整报告', qx + QS / 2, qy + QS + 24)
+        else ctx.fillText('扫码 · 手机查看完整报告', qx + QS / 2, qy - 16)
       } else {
         ctx.lineWidth = 1
         ctx.strokeRect(qx + 8, qy + 8, QS - 16, QS - 16)
@@ -308,7 +320,9 @@ export default function EndingReport() {
       const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
       const serial = `MLR-${ymd}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
       const trace = rep.fromAI && rep.stats
-        ? `档案 ${serial} · RTX 本地 AI 实时生成 · ${rep.stats.charsPerSec} 字/秒 · 零云端请求`
+        ? (rep.stats.local
+            ? `档案 ${serial} · RTX 本地 AI 实时生成 · ${rep.stats.charsPerSec} 字/秒 · 零云端请求`
+            : `档案 ${serial} · AI 实时生成 · ${rep.stats.model} · ${rep.stats.charsPerSec} 字/秒`)
         : `档案 ${serial} · 离线预演档案`
       ctx.fillStyle = 'rgba(216,184,120,.55)'
       ctx.font = '15px monospace'
@@ -371,12 +385,16 @@ export default function EndingReport() {
         pointerEvents: 'none', // 装饰背景，双保险：即使层叠再变也不拦点击
       }} />
       <div className="report-card">
-        <div className="ai-tag">{report ? (report.fromAI ? 'RTX LOCAL AI' : 'OFFLINE MODE') : 'RTX LOCAL AI'}</div>
-        {/* 本地推理遥测（展台"算力可见化"）：全部来自真实生成过程，字/秒实测不估算 */}
+        <div className="ai-tag">
+          {report
+            ? (report.fromAI ? (report.stats?.local ? 'RTX LOCAL AI' : 'CLOUD AI') : 'OFFLINE MODE')
+            : 'AI GENERATING'}
+        </div>
+        {/* 推理遥测（展台"算力可见化"）：全部来自真实生成过程，字/秒实测不估算；本地/云端如实标注 */}
         {report?.fromAI && report.stats && (
           <div className="ai-stats" data-testid="ai-stats">
-            {report.stats.model} · 本地生成 {report.stats.chars} 字 / {report.stats.seconds.toFixed(1)}s
-            · <b>{report.stats.charsPerSec} 字/秒</b> · 零云端请求
+            {report.stats.model} · {report.stats.local ? '本地生成' : '云端生成'} {report.stats.chars} 字 / {report.stats.seconds.toFixed(1)}s
+            · <b>{report.stats.charsPerSec} 字/秒</b>{report.stats.local && ' · 零云端请求'}
           </div>
         )}
         <div className="rk">人生预演报告 · TYPE <span data-testid="type-code">{typeCode}</span></div>

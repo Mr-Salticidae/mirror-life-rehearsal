@@ -29,15 +29,42 @@ export interface AiStats {
   chars: number      // 生成总字数
   seconds: number    // 首字到完稿耗时
   charsPerSec: number
+  local: boolean     // 本次生成落在本地端点还是云端——报告/海报的溯源文案据此措辞
 }
 
-// 模型替换接口：public/config.json 全量可配，任何 OpenAI 兼容端点（本地 LM Studio/Ollama/vLLM 或云端中转）即插即用
-// baseUrl/model 必配；apiKey 云端用（勿提交进库）；temperature/maxTokens 按模型特性调（更强模型可放宽）
-// visionModel：镜中特写读图用的多模态模型，不配则复用 model（模型无视觉能力时读心自动走模板兜底）
+// 模型替换接口：public/config.json 全量可配，任何 OpenAI 兼容端点（本地 LM Studio/Ollama/vLLM 或云端 API）即插即用
+// baseUrl/model 必配；temperature/maxTokens 按模型特性调（更强模型可放宽）
+// visionBaseUrl/visionApiKey/visionModel：镜中特写读图专用端点，不配则复用主端点
+// fallbackBaseUrl/fallbackModel/fallbackVisionModel：主端点（如云端 API）不可用时的降级端点（如本地 LM Studio）
+// apiKey/visionApiKey 绝不进 git：写在 public/config.local.json（已 gitignore，运行时覆盖合并），发布脚本会强制剔除
 export interface AiConfig {
   baseUrl: string; model: string; apiKey?: string; timeoutMs?: number
   temperature?: number; maxTokens?: number
-  visionModel?: string; visionMaxTokens?: number
+  visionBaseUrl?: string; visionApiKey?: string; visionModel?: string; visionMaxTokens?: number
+  fallbackBaseUrl?: string; fallbackModel?: string; fallbackVisionModel?: string
+}
+
+// 一次生成尝试的目标端点；文本/视觉各自组端点链，逐级降到可用为止
+export interface AiEndpoint { baseUrl: string; apiKey?: string; model: string }
+
+export const isLocalUrl = (u: string) => /^https?:\/\/(127\.|localhost|\[::1\])/.test(u)
+
+export function textEndpoints(cfg: AiConfig): AiEndpoint[] {
+  const eps: AiEndpoint[] = [{ baseUrl: cfg.baseUrl, apiKey: cfg.apiKey, model: cfg.model }]
+  if (cfg.fallbackBaseUrl && cfg.fallbackBaseUrl !== cfg.baseUrl)
+    eps.push({ baseUrl: cfg.fallbackBaseUrl, model: cfg.fallbackModel ?? cfg.model })
+  return eps
+}
+export function visionEndpoints(cfg: AiConfig): AiEndpoint[] {
+  const primary: AiEndpoint = {
+    baseUrl: cfg.visionBaseUrl ?? cfg.baseUrl,
+    apiKey: cfg.visionApiKey ?? cfg.apiKey,
+    model: cfg.visionModel ?? cfg.model,
+  }
+  const eps = [primary]
+  if (cfg.fallbackBaseUrl && cfg.fallbackBaseUrl !== primary.baseUrl)
+    eps.push({ baseUrl: cfg.fallbackBaseUrl, model: cfg.fallbackVisionModel ?? cfg.fallbackModel ?? primary.model })
+  return eps
 }
 
 let cfgCache: AiConfig | null = null
@@ -45,7 +72,13 @@ export async function loadConfig(): Promise<AiConfig> {
   if (cfgCache) return cfgCache
   try {
     const r = await fetch(`${import.meta.env.BASE_URL}config.json`, { cache: 'no-store' })
-    cfgCache = { timeoutMs: 20000, ...(await r.json()) }
+    let cfg = await r.json()
+    // 本地覆盖（apiKey 等敏感项的家）：没有该文件/不是 JSON 都静默跳过
+    try {
+      const l = await fetch(`${import.meta.env.BASE_URL}config.local.json`, { cache: 'no-store' })
+      if (l.ok) cfg = { ...cfg, ...(await l.json()) }
+    } catch { /* 无本地覆盖 */ }
+    cfgCache = { timeoutMs: 20000, ...cfg }
   } catch {
     cfgCache = { baseUrl: 'http://127.0.0.1:1234/v1', model: 'local-model', timeoutMs: 20000 }
   }
@@ -67,23 +100,25 @@ function pathSummary(input: ReportInput): string {
   return s
 }
 
-// 流式生成：onText 随生成进度收到累计全文（RTX 打字机演出）；离线模板也模拟逐字，观感一致
+// 流式生成：onText 随生成进度收到累计全文（打字机演出）；离线模板也模拟逐字，观感一致
+// 端点链逐级降：云端 API 挂了落本地模型，都挂落模板——展馆网络不可信是前提
 export async function generateReport(input: ReportInput, onText?: (t: string) => void): Promise<Report> {
   const cfg = await loadConfig()
+  for (const ep of textEndpoints(cfg)) {
   try {
     const ctrl = new AbortController()
     // 首包按配置超时，此后每个数据块刷新 15s 停滞计时（避免长生成被整体超时掐断）
     let stall = window.setTimeout(() => ctrl.abort(), cfg.timeoutMs ?? 20000)
     const bump = () => { clearTimeout(stall); stall = window.setTimeout(() => ctrl.abort(), 15000) }
-    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+    const res = await fetch(`${ep.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
+        ...(ep.apiKey ? { Authorization: `Bearer ${ep.apiKey}` } : {}),
       },
       signal: ctrl.signal,
       body: JSON.stringify({
-        model: cfg.model,
+        model: ep.model,
         temperature: cfg.temperature ?? 0.9,
         max_tokens: cfg.maxTokens ?? 700,
         stream: true,
@@ -93,7 +128,8 @@ export async function generateReport(input: ReportInput, onText?: (t: string) =>
             content:
               '你是《镜像自我·人生预演》的旁白，文风克制、电影感、第二人称，不用感叹号，不说教。' +
               '根据玩家的人生选择轨迹输出纯文本（不要 JSON、不要 markdown、不要标题）：' +
-              '三段叙事——童年段、少年段、结局段，每段 60~90 字，段落之间用一个空行分隔；' +
+              '必须恰好三段叙事——童年段、少年段、结局段，每段 60~90 字；' +
+              '段与段之间必须用一个空行（连续两个换行符）分隔，不要把三段写成一大段；' +
               '最后另起一段，以「——」开头，写给现实中这个人的一句话（30 字内）。' +
               '若轨迹里有遗憾或犹豫，在少年段轻轻点到，不渲染。' +
               '若给了「镜中读心」观察，把其中一两处此刻的特质（神情、姿态、气质）自然织进结局段或结语，' +
@@ -134,16 +170,18 @@ export async function generateReport(input: ReportInput, onText?: (t: string) =>
     if (!parsed) throw new Error('bad shape')
     const seconds = firstAt ? Math.max(0.1, (performance.now() - firstAt) / 1000) : 0.1
     const stats: AiStats = {
-      model: cfg.model, chars: acc.length, seconds,
+      model: ep.model, chars: acc.length, seconds,
       charsPerSec: Math.round(acc.length / seconds),
+      local: isLocalUrl(ep.baseUrl),
     }
     return { ...parsed, fromAI: true, stats }
   } catch (e) {
-    console.warn('[ai] 本地端点不可用，走模板兜底', e)
-    const t = templateReport(input)
-    if (onText) await simulateStream(t, onText)
-    return t
+    console.warn(`[ai] 端点不可用(${ep.baseUrl})，尝试下一级`, e)
   }
+  }
+  const t = templateReport(input)
+  if (onText) await simulateStream(t, onText)
+  return t
 }
 
 // 纯文本协议解析：空行分段，「——」起头段为结语；兼容模型偶发回退 JSON

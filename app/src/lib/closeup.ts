@@ -1,8 +1,8 @@
 // 镜中特写 · AI 读心：观众照片 → 五段人物特写报告
-// 走与人生报告同一个 OpenAI 兼容端点（public/config.json），用 visionModel（缺省复用 model）读图；
-// 端点不可用或模型无视觉能力时，走本地模板兜底，观感一致。
-// 照片只以 dataURL 形式随本次请求发往配置的端点（展台为本机 RTX），不落盘、不进任何存储。
-import { loadConfig, AiStats } from './ai'
+// 端点链见 ai.ts visionEndpoints：主端点（云端 API 或本地）→ 降级端点 → 模板兜底，观感一致。
+// 照片只以 dataURL 形式随本次请求发往配置的端点，不落盘、不进任何存储；
+// 端点链含云端时，上传页隐私文案会如实告知观众（visionMayGoRemote）。
+import { loadConfig, visionEndpoints, isLocalUrl, AiStats } from './ai'
 import { Gender } from '../store'
 
 export interface CloseupPoint { label?: string; text: string }
@@ -101,20 +101,22 @@ export async function generateCloseup(
   onUpdate?: (sections: CloseupSection[]) => void,
 ): Promise<CloseupReport> {
   const cfg = await loadConfig()
+  // 端点链逐级降：云端视觉 API 挂了落本地模型，都挂落模板（与 ai.ts 同一策略）
+  for (const ep of visionEndpoints(cfg)) {
   try {
     const ctrl = new AbortController()
     // 读图预填充比纯文本慢，首包超时放宽到 45s；此后每块刷新 20s 停滞计时
     let stall = window.setTimeout(() => ctrl.abort(), Math.max(cfg.timeoutMs ?? 20000, 45000))
     const bump = () => { clearTimeout(stall); stall = window.setTimeout(() => ctrl.abort(), 20000) }
-    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+    const res = await fetch(`${ep.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
+        ...(ep.apiKey ? { Authorization: `Bearer ${ep.apiKey}` } : {}),
       },
       signal: ctrl.signal,
       body: JSON.stringify({
-        model: cfg.visionModel ?? cfg.model,
+        model: ep.model,
         temperature: 0.5,
         max_tokens: cfg.visionMaxTokens ?? 1100,
         stream: true,
@@ -163,16 +165,24 @@ export async function generateCloseup(
     if (sections.length < 3 || sections.every(s => !s.points.length)) throw new Error('bad shape')
     const seconds = firstAt ? Math.max(0.1, (performance.now() - firstAt) / 1000) : 0.1
     const stats: AiStats = {
-      model: cfg.visionModel ?? cfg.model, chars: acc.length, seconds,
+      model: ep.model, chars: acc.length, seconds,
       charsPerSec: Math.round(acc.length / seconds),
+      local: isLocalUrl(ep.baseUrl),
     }
     return { sections, fromAI: true, stats }
   } catch (e) {
-    console.warn('[closeup] 视觉端点不可用，走模板兜底', e)
-    const t = templateCloseup()
-    if (onUpdate) await simulateReveal(t.sections, onUpdate)
-    return t
+    console.warn(`[closeup] 视觉端点不可用(${ep.baseUrl})，尝试下一级`, e)
   }
+  }
+  const t = templateCloseup()
+  if (onUpdate) await simulateReveal(t.sections, onUpdate)
+  return t
+}
+
+// 隐私文案分叉依据：视觉端点链里是否存在云端一跳（存在即须向观众声明照片会离开本机）
+export async function visionMayGoRemote(): Promise<boolean> {
+  const cfg = await loadConfig()
+  return visionEndpoints(cfg).some(ep => !isLocalUrl(ep.baseUrl))
 }
 
 // 兜底也逐段浮现（约 2s），与真流式共用同一 UI 节奏

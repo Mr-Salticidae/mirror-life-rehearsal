@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../store'
 import { sfx } from '../lib/audio'
-import { generateCloseup, digestCloseup, CloseupSection, CloseupReport } from '../lib/closeup'
+import { generateCloseup, digestCloseup, visionMayGoRemote, CloseupSection, CloseupReport } from '../lib/closeup'
 
 // 镜中特写：拍照/上传 → 镜面扫描 → AI 读心五段（选完性别、进序幕之前）
 // 照片只存在本组件内存里，离开该阶段即随组件销毁；除发往 config.json 配置的本机端点外不去任何地方
@@ -40,6 +40,9 @@ export default function CloseupScene() {
   const [report, setReport] = useState<CloseupReport | null>(null)
   const [toast, setToast] = useState('')
   const [camToast, setCamToast] = useState('')
+  // 隐私文案如实分叉：视觉端点链含云端时必须告知观众照片会离开本机
+  const [remote, setRemote] = useState(false)
+  useEffect(() => { visionMayGoRemote().then(setRemote).catch(() => {}) }, [])
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -148,7 +151,8 @@ export default function CloseupScene() {
                   <path d="M18 12h6l3 5h10l3-5h6" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
                 </svg>
                 <div className="cu-d-title">将照片拖到这里</div>
-                <div className="cu-d-hint">支持 JPG / PNG · 正脸特写效果最佳<br />照片仅用于本次读心 · 不保存不上传</div>
+                <div className="cu-d-hint">支持 JPG / PNG · 正脸特写效果最佳<br />
+                  {remote ? '照片仅用于本次读心 · 加密传至 AI 服务分析后即弃 · 本站不保存' : '照片仅用于本次读心 · 不保存不上传'}</div>
               </div>
               <div className="cu-actions">
                 <button className="cu-btn" data-testid="closeup-cam" onClick={startCamera}>拍　照</button>

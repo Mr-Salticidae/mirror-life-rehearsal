@@ -102,7 +102,9 @@ export default function PrintReport(p: Props) {
 
         <div className="ps-aitag">
           {p.report.fromAI
-            ? <>由展台 RTX 本地 AI 生成{p.report.stats ? ` · ${p.report.stats.charsPerSec} 字/秒 · 零云端请求` : ' · 零云端请求'}</>
+            ? (p.report.stats?.local === false
+                ? <>由展台 AI 实时生成{p.report.stats ? ` · ${p.report.stats.charsPerSec} 字/秒` : ''}</>
+                : <>由展台 RTX 本地 AI 生成{p.report.stats ? ` · ${p.report.stats.charsPerSec} 字/秒 · 零云端请求` : ' · 零云端请求'}</>)
             : '离线预演档案'}
         </div>
 

@@ -71,7 +71,7 @@ export default function MobileReport({ p }: { p: SharePayload }) {
 
       <div className="m-aitag">
         {p.ai === 1
-          ? <>由展台 RTX 本地 AI 生成{p.cs ? ` · ${p.cs} 字/秒 · 零云端请求` : ' · 零云端请求'}</>
+          ? <>由展台 AI 实时生成{p.cs ? ` · ${p.cs} 字/秒` : ''}</>
           : '离线预演档案'}
       </div>
 

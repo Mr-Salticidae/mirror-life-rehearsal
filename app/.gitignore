@@ -1,3 +1,5 @@
 node_modules/
 dist/
 *.local
+# 运行时本地覆盖配置（apiKey 的家）：绝不入库；deploy-preview.ps1 发布前也会强制剔除
+public/config.local.json
