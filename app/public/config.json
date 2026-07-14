@@ -1,6 +1,8 @@
 {
   "baseUrl": "http://127.0.0.1:1234/v1",
-  "model": "local-model",
+  "model": "qwen2.5-vl-7b-instruct",
+  "visionModel": "qwen2.5-vl-7b-instruct",
+  "visionMaxTokens": 1100,
   "timeoutMs": 20000,
   "reportBase": "https://tiaozhuxiansheng.com/mlr/"
 }

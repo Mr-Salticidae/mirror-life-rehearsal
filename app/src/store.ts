@@ -3,6 +3,7 @@ import { Ending, Stat, dominantStat } from './story'
 
 export type Phase =
   | 'attract'      // 待机吸引模式
+  | 'closeup'      // 镜中特写：拍照/上传 → AI 读心报告
   | 'prologue'     // 序幕：擦亮镜子
   | 'chapter'      // 章节标题卡
   | 'story'        // 抉择节点
@@ -65,8 +66,9 @@ export const useGame = create<GameState>((set, get) => ({
   graffitiData: null,
   gender: null,
 
+  // 起局先进「镜中特写」（拍照/上传 → AI 读心），读完或跳过再进序幕
   start: (gender?: Gender) => set({
-    phase: 'prologue', nodeId: 'A', chapterIndex: 0,
+    phase: 'closeup', nodeId: 'A', chapterIndex: 0,
     stats: initialStats(), path: [], regret: false, timeouts: 0, ending: null,
     overridden: false, gameScore: 0, gameRank: null, gameDetail: '', graffitiData: null,
     gender: gender ?? null,

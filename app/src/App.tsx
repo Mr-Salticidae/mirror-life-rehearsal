@@ -3,6 +3,7 @@ import { useGame } from './store'
 import { NODES, CAREER_INFO } from './story'
 import { preloadStills, genderSuffix } from './components/useStill'
 import AttractMode from './components/AttractMode'
+import CloseupScene from './components/CloseupScene'
 import Prologue from './components/Prologue'
 import TitleCard from './components/TitleCard'
 import StoryScene from './components/StoryScene'
@@ -104,6 +105,7 @@ export default function App() {
     <Boundary>
       <div className={`stage letterbox ${inCinema ? '' : 'lb-off'}`}>
         {phase === 'attract' && <AttractMode />}
+        {phase === 'closeup' && <CloseupScene />}
         {phase === 'prologue' && <Prologue />}
         {phase === 'chapter' && <TitleCard />}
         {phase === 'story' && <StoryScene />}

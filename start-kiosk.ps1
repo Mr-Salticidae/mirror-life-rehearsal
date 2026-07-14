@@ -49,6 +49,22 @@ if (Test-Server) {
 }
 Write-Host "服务已就绪: $url"
 
+# 3.5) 本地 AI（LM Studio）：起服务(带 CORS·镜中读心跨源必需)并预载视觉模型
+#      机器上没装 LM Studio 也不阻塞——应用内读心/报告自动走模板兜底
+$lms = Join-Path $env:USERPROFILE '.lmstudio\bin\lms.exe'
+if (Test-Path $lms) {
+  try {
+    & $lms server start --port 1234 --cors 2>$null | Out-Null
+    $loaded = (& $lms ps 2>$null) -join ' '
+    if ($loaded -notmatch 'qwen2\.5-vl-7b-instruct') {
+      & $lms load qwen2.5-vl-7b-instruct --gpu max --context-length 4096 -y 2>$null | Out-Null
+    }
+    Write-Host '本地 AI 已就绪 (LM Studio :1234 · qwen2.5-vl-7b-instruct)'
+  } catch { Write-Host '[提示] 本地 AI 启动失败，读心与报告将走模板兜底。' -ForegroundColor Yellow }
+} else {
+  Write-Host '[提示] 未装 LM Studio，读心与报告走模板兜底。' -ForegroundColor Yellow
+}
+
 # 4) 浏览器 kiosk 全屏（独立 user-data-dir 保证 kiosk/自动播放参数生效，不受已开浏览器影响）
 if (-not $NoBrowser) {
   $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe",

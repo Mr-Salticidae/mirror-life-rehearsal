@@ -31,13 +31,15 @@ export interface AiStats {
 
 // 模型替换接口：public/config.json 全量可配，任何 OpenAI 兼容端点（本地 LM Studio/Ollama/vLLM 或云端中转）即插即用
 // baseUrl/model 必配；apiKey 云端用（勿提交进库）；temperature/maxTokens 按模型特性调（更强模型可放宽）
-interface AiConfig {
+// visionModel：镜中特写读图用的多模态模型，不配则复用 model（模型无视觉能力时读心自动走模板兜底）
+export interface AiConfig {
   baseUrl: string; model: string; apiKey?: string; timeoutMs?: number
   temperature?: number; maxTokens?: number
+  visionModel?: string; visionMaxTokens?: number
 }
 
 let cfgCache: AiConfig | null = null
-async function loadConfig(): Promise<AiConfig> {
+export async function loadConfig(): Promise<AiConfig> {
   if (cfgCache) return cfgCache
   try {
     const r = await fetch(`${import.meta.env.BASE_URL}config.json`, { cache: 'no-store' })
