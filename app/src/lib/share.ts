@@ -16,7 +16,7 @@ export interface SharePayload {
   ai: 0 | 1               // 1=真 AI 文本随载荷；0=手机端模板重生成
   ps?: string[]           // 三段叙事（仅 ai=1）
   fw?: string             // 结语（仅 ai=1）
-  m?: string              // 模型名（仅 ai=1，展示"由 RTX 本地 AI 生成"）
+  m?: string              // 模型名（已停发——手机页不展示，省码密度；保留字段兼容旧码）
   cs?: number             // 字/秒（仅 ai=1）
   rg?: 0 | 1              // 遗憾标记（仅 ai=0，模板种子）
   gd?: string             // 职业体验短句（仅 ai=0，模板种子）
@@ -101,6 +101,11 @@ export async function decodePayload(hash: string): Promise<SharePayload | null> 
 export async function buildShareUrl(p: SharePayload): Promise<string> {
   return `${await reportBase()}r.html#${await encodePayload(p)}`
 }
+
+// 扫码链接长度预算：≤1090 字符封在 QR v23（109×109 模块，ECC L 容量 1091 字节）内。
+// v23 是旧版载荷（含 m 字段的完整一局）在 176px 框位实测可扫的密度基线；
+// 镜中印象字段曾把长局推到 v25（117×117）导致现场扫不开——印象必须按此预算上车（见 EndingReport 降配序列）。
+export const QR_URL_BUDGET = 1090
 
 // ---------- 二维码绘制 ----------
 // ECC 用 L：屏扫/图扫无污损场景，密度优先保证小框可扫。

@@ -6,7 +6,7 @@ import { generateReport, Report } from '../lib/ai'
 import { computeTitle } from '../lib/titles'
 import { pushHall } from '../lib/hall'
 import { TRAIT_FLAVOR, STAT_ORDER, computeAxes, computeVariantTrait, computeAltLives } from '../lib/reportModel'
-import { SharePayload, buildShareUrl, paintQr } from '../lib/share'
+import { SharePayload, buildShareUrl, paintQr, QR_URL_BUDGET } from '../lib/share'
 import FlowChart from './FlowChart'
 import PrintReport, { printCardA4, printFullReport } from './PrintReport'
 import { useStill } from './useStill'
@@ -92,22 +92,35 @@ export default function EndingReport() {
   useEffect(() => {
     if (!report) return
     let alive = true
-    const payload: SharePayload = {
+    const base: SharePayload = {
       v: 1, c: ending, ti: title, rk: g.gameRank,
       s: STAT_ORDER.map(st => g.stats[st]),
       tl: timeline.map(t => [t.nodeId, t.choice]),
       sc: g.gameScore,
       ...(report.fromAI
         ? { ai: 1 as const, ps: report.paragraphs, fw: report.finalWord,
-            m: report.stats?.model, cs: report.stats?.charsPerSec }
+            cs: report.stats?.charsPerSec }
         : { ai: 0 as const, rg: g.regret ? 1 as const : 0 as const, gd: g.gameDetail }),
-      // 镜中印象随码上手机（截断控制码密度：176px 框位是扫得出的底线）
-      ...(g.closeup
-        ? { im: g.closeup.subs.slice(0, 3).map(x => x.sub.slice(0, 24)),
-            ims: g.closeup.summary.slice(0, 80) }
-        : {}),
     }
-    buildShareUrl(payload)
+    // 镜中印象按码密度预算上车（完整一局的载荷本就逼近 v22 上限）：
+    // 超预算逐级降配——先丢读心总结，再丢印象小标题；叙事全文永不降（手机页的主体）。
+    // 屏幕/海报/打印四处的印象呈现不受影响。
+    const variants: SharePayload[] = g.closeup
+      ? [
+          { ...base, im: g.closeup.subs.slice(0, 3).map(x => x.sub.slice(0, 16)),
+            ims: g.closeup.summary.slice(0, 80) },
+          { ...base, im: g.closeup.subs.slice(0, 3).map(x => x.sub.slice(0, 16)) },
+          base,
+        ]
+      : [base]
+    ;(async () => {
+      let url = ''
+      for (const p of variants) {
+        url = await buildShareUrl(p)
+        if (url.length <= QR_URL_BUDGET) break
+      }
+      return url
+    })()
       // QA 钩子：控制台可取 __shareUrl 直接验证手机页（展台排查用）
       .then(url => { if (alive) { setShareUrl(url); (window as any).__shareUrl = url } })
       .catch(e => { console.warn('[share] 扫码链接构建失败', e); if (alive) setShareUrl(null) })
