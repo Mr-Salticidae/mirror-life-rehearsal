@@ -13,6 +13,8 @@ export type Phase =
 
 export type Rank = 'S' | 'A' | 'B'
 
+export type Gender = 'male' | 'female'
+
 export interface PathStep { nodeId: string; choiceId: string; choiceText: string }
 
 interface GameState {
@@ -29,8 +31,9 @@ interface GameState {
   gameRank: Rank | null
   gameDetail: string
   graffitiData: string | null
+  gender: Gender | null      // 入口选的男/女，带入整段预演
 
-  start(): void
+  start(gender?: Gender): void
   toAttract(): void
   setPhase(p: Phase): void
   enterChapter(i: number): void
@@ -60,13 +63,21 @@ export const useGame = create<GameState>((set, get) => ({
   gameRank: null,
   gameDetail: '',
   graffitiData: null,
+  gender: null,
 
-  start: () => set({
+  start: (gender?: Gender) => set({
     phase: 'prologue', nodeId: 'A', chapterIndex: 0,
     stats: initialStats(), path: [], regret: false, timeouts: 0, ending: null,
     overridden: false, gameScore: 0, gameRank: null, gameDetail: '', graffitiData: null,
+    gender: gender ?? null,
   }),
-  toAttract: () => set({ phase: 'attract' }),
+  // 回待机即整局清零：异常/看门狗路径也可能走到这里，不能指望下一次 start() 才清
+  toAttract: () => set({
+    phase: 'attract', nodeId: 'A', chapterIndex: 0,
+    stats: initialStats(), path: [], regret: false, timeouts: 0, ending: null,
+    overridden: false, gameScore: 0, gameRank: null, gameDetail: '', graffitiData: null,
+    gender: null,
+  }),
   setPhase: (p) => set({ phase: p }),
   enterChapter: (i) => set({ chapterIndex: i, phase: 'chapter' }),
   enterNode: (id) => set({ nodeId: id, phase: 'story' }),

@@ -1,0 +1,4 @@
+# bat 必须 CRLF 检出：cmd 对 LF-only 批处理的 goto/标签解析会错乱（实测踩坑）
+*.bat text eol=crlf
+# ps1 带 BOM 的 UTF-8，按文本处理但别动换行以外的东西
+*.ps1 text

@@ -7,7 +7,7 @@ import { sfx } from '../lib/audio'
 
 // 画家《一面墙》：喷漆创作，30s（其他游戏仍 20s，画家线单独放宽；可提前完成）
 // 作品导出 dataURL，合成进结局剧照
-const DURATION = 30
+const DURATION = 15
 const COLORS = ['#ff4d4d', '#ffb84d', '#ffe84d', '#5ce87a', '#4dc4ff', '#b06aff', '#ff6ad5', '#f5f0e8', '#181818']
 const SIZES = [14, 26, 44]
 
@@ -115,11 +115,16 @@ export default function GraffitiWall() {
     window.addEventListener('pointerdown', down)
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
+    // 触摸被系统手势打断/指针离窗时 pointerup 不来，喷漆循环音效会一直响——一并兜底
+    window.addEventListener('pointercancel', up)
+    window.addEventListener('blur', up)
     return () => {
       clearInterval(sprayTimer)
       window.removeEventListener('pointerdown', down)
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+      window.removeEventListener('blur', up)
     }
   }, [])
 
@@ -131,9 +136,11 @@ export default function GraffitiWall() {
       setTimeLeft(Math.ceil(left))
       if (left <= 0) done()
     }, 250)
-    return () => clearInterval(iv)
+    return () => { clearInterval(iv); clearTimeout(finishT.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const finishT = useRef(0)
 
   const done = () => {
     if (doneRef.current) return
@@ -156,7 +163,7 @@ export default function GraffitiWall() {
     const rank = rankOf('graffiti', cov)
     setOver({ rank, cov })
     sfx.confirm()
-    setTimeout(() => finishGame(cov,
+    finishT.current = window.setTimeout(() => finishGame(cov,
       `占领了这面墙的 ${cov}%，一共 ${strokesRef.current} 笔`, rank), 3000)
   }
 

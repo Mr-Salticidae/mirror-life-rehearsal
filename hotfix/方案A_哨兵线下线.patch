@@ -1,0 +1,44 @@
+diff --git a/app/src/components/StoryScene.tsx b/app/src/components/StoryScene.tsx
+index cfc36ee..7ac9f34 100644
+--- a/app/src/components/StoryScene.tsx
++++ b/app/src/components/StoryScene.tsx
+@@ -1,6 +1,6 @@
+ import { useEffect, useMemo, useRef, useState } from 'react'
+ import { useGame } from '../store'
+-import { NODES, CHAPTER_FLOW, Choice, Career, dominantEnding, CAREER_INFO } from '../story'
++import { NODES, CHAPTER_FLOW, Choice, Career, dominantEnding, CAREER_INFO, DISABLED_CAREERS } from '../story'
+ import { useStill, useMotion } from './useStill'
+ import ParallaxStill from './ParallaxStill'
+ import { sfx } from '../lib/audio'
+@@ -266,7 +266,7 @@ export default function StoryScene() {
+         <>
+           <div className="choice-prompt">五扇门重新亮起。走进——</div>
+           <div className="choice-zone">
+-            {(Object.keys(CAREER_INFO) as Career[]).map(k => (
++            {(Object.keys(CAREER_INFO) as Career[]).filter(k => !DISABLED_CAREERS.includes(k)).map(k => (
+               <button
+                 key={k} className="choice-card" data-testid={`door-${k}`}
+                 onMouseEnter={() => sfx.hover()}
+diff --git a/app/src/story.ts b/app/src/story.ts
+index a2847dc..1a2b3b7 100644
+--- a/app/src/story.ts
++++ b/app/src/story.ts
+@@ -321,13 +321,17 @@ const STAT_TO_CAREER: [Stat, Career][] = [
+   ['rhythm', 'musician'], ['far', 'astronaut'],
+ ]
+ 
++// BW止血·方案A：下线职业线名单（观众流程不可达；?career= 调试直跳不受影响）
++export const DISABLED_CAREERS: readonly Career[] = ['soldier']
++
+ // 五维路由：开方阻尼归一化 —— norm = stat / sqrt(maxReach)
+ // 相比纯占比(stat/max)，瘦维度(韵/远)仍有可达性优势，但两次顺手点击不再直接封顶；
+ // 并列时按固定优先级 守 > 创 > 疾 > 韵 > 远（STAT_TO_CAREER 的声明序）。
+ export function dominantEnding(stats: Record<Stat, number>): Career {
+-  let best: Career = 'soldier'
++  let best: Career = 'painter'
+   let bestScore = -1
+   for (const [stat, career] of STAT_TO_CAREER) {
++    if (DISABLED_CAREERS.includes(career)) continue
+     const score = stats[stat] / Math.sqrt(MAX_REACH[stat])
+     if (score > bestScore + 1e-9) { bestScore = score; best = career }
+   }

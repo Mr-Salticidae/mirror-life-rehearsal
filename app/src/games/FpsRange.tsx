@@ -8,7 +8,7 @@ import { sfx } from '../lib/audio'
 
 // 军人《守夜》：夜间靶场，鼠标视角+点击射击，20s（展会节奏，主导定）
 // 红色标靶 +10（爆头 ×2）；白色平民靶 -15；连中有 streak 加成
-const DURATION = 20
+const DURATION = 15
 const SURGE_AT = 11 // 二段高潮起点（原 60s 版为 32s，按比例保持"过半后混入"的节拍）
 
 export default function FpsRange() {
@@ -272,11 +272,28 @@ export default function FpsRange() {
 
     // 主循环（首次锁定视角后才开始计时/出靶）
     let raf = 0
+    let finishT = 0
+    let disposed = false
     let spawnAcc = 0, last = performance.now()
     let surged = false // 二段高潮只触发一次
     const endedRef = { current: false }
+    // 异常/GPU 上下文丢失时按当前成绩提前结算，主流程不断
+    const forceEnd = () => {
+      if (endedRef.current || disposed) return
+      endedRef.current = true
+      if (document.pointerLockElement) document.exitPointerLock()
+      const st = stats.current
+      const rank = rankOf('fps', st.score)
+      setOver(rank)
+      finishT = window.setTimeout(() => finishGame(st.score,
+        `命中 ${st.hit} 个标靶（爆头 ${st.head} 次），最长连击 ${st.best}，误伤 ${st.civ} 次`, rank), 1500)
+    }
+    renderer.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); forceEnd() })
     const loop = () => {
       raf = requestAnimationFrame(loop)
+      try { tick() } catch (err) { console.error('[fps-range]', err); forceEnd() }
+    }
+    const tick = () => {
       const now = performance.now()
       const dt = Math.min(50, now - last); last = now
       const started = startRef.current !== null
@@ -328,7 +345,7 @@ export default function FpsRange() {
         const rank = rankOf('fps', st.score)
         setOver(rank)
         sfx.confirm()
-        setTimeout(() => finishGame(st.score,
+        finishT = window.setTimeout(() => finishGame(st.score,
           `命中 ${st.hit} 个标靶（爆头 ${st.head} 次），最长连击 ${st.best}，误伤 ${st.civ} 次`, rank), 3000)
       }
       renderer.render(scene, camera)
@@ -343,7 +360,9 @@ export default function FpsRange() {
     window.addEventListener('resize', onResize)
 
     return () => {
+      disposed = true
       cancelAnimationFrame(raf)
+      clearTimeout(finishT)
       clearTimeout(demoTimer)
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mousedown', shoot)
@@ -351,12 +370,13 @@ export default function FpsRange() {
       document.removeEventListener('pointerlockerror', onLockError)
       window.removeEventListener('resize', onResize)
       if (document.pointerLockElement) document.exitPointerLock()
-      renderer.dispose()
       scene.traverse(o => {
         const m = o as THREE.Mesh
         if (m.geometry) m.geometry.dispose()
         if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach(mm => mm.dispose())
       })
+      renderer.dispose()
+      renderer.forceContextLoss()
       mount.removeChild(renderer.domElement)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

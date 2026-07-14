@@ -116,7 +116,7 @@ button { font-family: inherit; cursor: pointer; }
 .subtitle .caret { display: inline-block; width: 2px; height: 1em; background: #c9a86a;
   vertical-align: -0.12em; margin-left: 4px; animation: blink 0.85s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
-.subtitle-hint { font-size: 12px; letter-spacing: .4em; color: #ffffff55; margin-top: 8px;
+.subtitle-hint { font-size: 16px; font-weight: 700; letter-spacing: .4em; color: #ffffff55; margin-top: 8px;
   animation: pulseSoft 2.2s ease-in-out infinite; }
 @keyframes pulseSoft { 50% { opacity: .35; } }
 
@@ -207,14 +207,29 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center; justify-content: center; gap: 4vh; background: radial-gradient(ellipse 70% 60% at 50% 42%, #101624, #020308 75%); }
 .attract .kicker { font-size: 13px; letter-spacing: .9em; text-indent: .9em; color: #8fa8c8aa;
   animation: pulseSoft 3s ease-in-out infinite; }
-.attract .logo { font-size: clamp(44px, 7.5vw, 110px); letter-spacing: .3em; text-indent: .3em;
+.attract .logo { font-size: clamp(26px, 2.6vw, 34px); letter-spacing: .3em; text-indent: .3em;
   font-weight: 600; background: linear-gradient(180deg, #fdfaf2, #b8c4d8 60%, #67748e);
   -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 0 40px rgba(140,170,220,.25)); }
-.attract .sub { font-size: clamp(14px, 1.4vw, 20px); letter-spacing: .55em; text-indent: .55em; color: #c9b896; }
-.attract .cta { margin-top: 5vh; font-size: 15px; letter-spacing: .5em; text-indent: .5em; color: #fff;
+.attract .sub { font-size: clamp(44px, 7.5vw, 110px); letter-spacing: .2em; text-indent: .2em; color: #c9b896; }
+/* 性别入口：点男/女后两钮隐退、"触碰开始预演"同位浮出（grid 同格交叉淡入，布局不跳动） */
+.attract .entry-slot { display: grid; grid-template-columns: 1fr; justify-items: center; align-items: center;
+  margin-top: 4vh; min-height: clamp(74px, 8.5vw, 104px); }
+.attract .entry-slot > * { grid-column: 1; grid-row: 1; }
+.attract .gender-pick { display: flex; gap: 4.5vw; transition: opacity .45s ease, transform .45s ease; }
+.attract .gender-pick.gone { opacity: 0; transform: scale(.9) translateY(-6px); pointer-events: none; }
+.attract .gender-btn { width: clamp(74px, 8.5vw, 104px); height: clamp(74px, 8.5vw, 104px);
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid rgba(255,255,255,.22); border-radius: 50%;
+  color: #c9d4e6; transition: all .3s; animation: pulseSoft 3s ease-in-out infinite; }
+.attract .gender-btn svg, .attract .gender-btn .gender-icon { width: 66%; height: 66%; object-fit: contain; }
+/* 男图标视觉居中微调：符号外框原本偏右上，向左下挪一点（数值可调） */
+.attract .gender-btn[data-testid="gender-male"] .gender-icon { transform: translate(-5px, 5px); }
+.attract .gender-btn:hover { border-color: #d8b878; color: #f0e0b8; box-shadow: 0 0 40px rgba(216,184,120,.25); }
+@keyframes genderIn { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
+.attract .cta { font-size: 15px; letter-spacing: .5em; text-indent: .5em; color: #fff;
   padding: 18px 54px; background: none; border: 1px solid rgba(255,255,255,.35);
-  transition: all .3s; animation: pulseSoft 2.4s ease-in-out infinite; }
+  transition: all .3s; animation: genderIn .5s ease both, pulseSoft 2.4s ease-in-out .5s infinite; }
 .attract .cta:hover { border-color: #d8b878; color: #f0e0b8; box-shadow: 0 0 40px rgba(216,184,120,.25); }
 .attract .rtx { position: absolute; bottom: 4vh; font-size: 11px; letter-spacing: .45em; color: #ffffff44; }
 /* 断网徽标（拔网线时刻）：离线时才出现，绿点呼吸强调"本地独立运行" */
@@ -393,7 +408,8 @@ button { font-family: inherit; cursor: pointer; }
 /* ============ 终幕报告 ============ */
 .report { position: absolute; inset: 0; z-index: 30; overflow: hidden;
   background: radial-gradient(ellipse 70% 60% at 50% 40%, #0d121e, #020306 78%);
-  display: flex; align-items: center; justify-content: center; gap: 4vw; padding: 10vh 6vw; }
+  display: flex; align-items: center; justify-content: center; gap: clamp(2vw, 3vw, 4vw);
+  padding: clamp(1.5vh, 2.5vh, 4vh) clamp(2vw, 3vw, 4vw); }
 .report-card { width: min(560px, 44vw); max-height: 76vh; overflow: auto; padding: 44px 46px;
   background: linear-gradient(165deg, rgba(22,26,36,.9), rgba(8,10,16,.94));
   border: 1px solid rgba(201,168,106,.35); position: relative;
@@ -414,10 +430,11 @@ button { font-family: inherit; cursor: pointer; }
   letter-spacing: .08em; color: #4a6a92; }
 .report-card .ai-stats b { color: #76ff9e; font-weight: 600; }
 /* position:relative 让侧栏叠在绝对定位的剧照背景层之上——否则按钮看得见点不到 */
-.report-side { display: flex; flex-direction: column; gap: 3.5vh; align-items: center; max-width: 34vw;
+.report-side { display: flex; flex-direction: column; justify-content: space-between; align-self: stretch;
+  gap: clamp(1vh, 1.8vh, 2.5vh); align-items: center; max-width: 34vw; padding: 1vh 0;
   position: relative; }
-.report-actions { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
-.report-actions button { font-size: 13px; letter-spacing: .3em; padding: 13px 22px;
+.report-actions { display: flex; gap: clamp(6px, .8vw, 12px); flex-wrap: nowrap; justify-content: center; }
+.report-actions button { font-size: clamp(10px, .72vw, 12px); letter-spacing: .06em; padding: clamp(8px, 1vh, 11px) clamp(10px, 1vw, 16px);
   white-space: nowrap;
   background: none; border: 1px solid rgba(255,255,255,.3); color: #e8e4da; transition: all .25s; }
 .report-actions button:hover { border-color: #d8b878; color: #f0e0b8; }
@@ -426,7 +443,7 @@ button { font-family: inherit; cursor: pointer; }
 /* 扫码卡：现场直接扫屏幕带走报告（canvas 内部 480、显示 150，高密度码边缘保持锐利） */
 .qr-card { display: flex; align-items: center; gap: 16px; padding: 12px 18px 12px 12px;
   border: 1px solid rgba(216,184,120,.5); background: rgba(216,184,120,.06); }
-.qr-card canvas { width: 150px; height: 150px; display: block; }
+.qr-card canvas { width: clamp(108px, 12vw, 150px); height: clamp(108px, 12vw, 150px); display: block; }
 .qr-card .qr-text { display: flex; flex-direction: column; gap: 8px; text-align: left; }
 .qr-card .qr-text b { font-size: 14px; letter-spacing: .25em; color: #f0e0b8; font-weight: 600; }
 .qr-card .qr-text span { font-size: 11px; letter-spacing: .2em; color: #b8ac90; }

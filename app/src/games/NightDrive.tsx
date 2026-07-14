@@ -10,7 +10,7 @@ import { sfx } from '../lib/audio'
 const TRAFFIC_MODELS = ['sedan', 'taxi', 'van', 'suv', 'police', 'delivery', 'hatchback-sports']
 
 // 赛车手《夜环线》：雨夜三车道，←→/AD 变道躲车流，蓝色氮气加速，20s 距离计分（展会节奏，主导定）
-const DURATION = 20
+const DURATION = 15
 const LANES = [-3.2, 0, 3.2]
 // 模块加载即预取赛车模型：玩家走完序章进游戏时通常已缓存，配合下方 await → 第一帧即精细模型
 loadModel('models/cars/race.glb')
@@ -160,10 +160,25 @@ export default function NightDrive() {
     let t0 = 0
     let last = 0
     let raf = 0
+    let finishT = 0
     let disposed = false
     const ended = { current: false }
+    // 异常/GPU 上下文丢失时按当前成绩提前结算，主流程不断（正常到点结算不走这里）
+    const forceEnd = () => {
+      if (ended.current || disposed) return
+      ended.current = true
+      const d = Math.floor(state.dist)
+      const rank = rankOf('race', d)
+      setOver(rank)
+      finishT = window.setTimeout(() => finishGame(d,
+        `冲出 ${d} 米，氮气 ${state.nitroTaken} 次，碰撞 ${state.crashes} 次`, rank), 1500)
+    }
+    renderer.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); forceEnd() })
     const loop = () => {
       raf = requestAnimationFrame(loop)
+      try { tick() } catch (err) { console.error('[night-drive]', err); forceEnd() }
+    }
+    const tick = () => {
       const now = performance.now()
       const realDt = Math.min(0.05, (now - last) / 1000); last = now
       const elapsed = (now - t0) / 1000
@@ -254,7 +269,7 @@ export default function NightDrive() {
         const rank = rankOf('race', d)
         setOver(rank)
         sfx.confirm()
-        setTimeout(() => finishGame(d,
+        finishT = window.setTimeout(() => finishGame(d,
           `冲出 ${d} 米，氮气 ${state.nitroTaken} 次，碰撞 ${state.crashes} 次`, rank), 3000)
       }
       renderer.render(scene, camera)
@@ -278,15 +293,17 @@ export default function NightDrive() {
     return () => {
       disposed = true
       cancelAnimationFrame(raf)
+      clearTimeout(finishT) // 结算 3s 窗口内被卸载时，不让残留回调把机器拽回报告页
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('pointerdown', onPtr)
       window.removeEventListener('resize', onResize)
-      renderer.dispose()
       scene.traverse(o => {
         const m = o as THREE.Mesh
         if (m.geometry) m.geometry.dispose()
         if (m.material) (Array.isArray(m.material) ? m.material : [m.material]).forEach(mm => mm.dispose())
       })
+      renderer.dispose()
+      renderer.forceContextLoss() // 一天几百局：主动释放 GL 上下文，不等 GC（防止最老上下文被浏览器强制丢弃）
       mount.removeChild(renderer.domElement)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
