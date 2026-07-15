@@ -1,5 +1,5 @@
 {
-  "baseUrl": "https://api.openai.com/v1",
+  "baseUrl": "https://tiaozhuxiansheng.com/mlr-api/v1",
   "model": "gpt-5.5",
   "visionModel": "gpt-5.5",
   "visionMaxTokens": 1100,

@@ -1,0 +1,21 @@
+[Unit]
+Description=MLR AI proxy（镜像自我·人生预演 线上读心/叙事中转）
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/env node /opt/mlr-proxy/mlr-ai-proxy.js
+EnvironmentFile=/etc/mlr-proxy.env
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+# 加固：本服务只需要读自己的代码目录和出网
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/opt/mlr-proxy
+
+[Install]
+WantedBy=multi-user.target

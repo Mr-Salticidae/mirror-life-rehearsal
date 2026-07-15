@@ -1,0 +1,14 @@
+name = "mlr-openai-hop"
+main = "index.js"
+compatibility_date = "2026-01-01"
+
+# 区域跳板核心：转发逻辑放进钉在北美（enam）的 Durable Object 执行，
+# 绕开「Worker 就近在香港 PoP 执行、出口被 OpenAI 区域封锁」的问题
+# （Smart Placement 实测 20 分钟未生效，弃用）
+[[durable_objects.bindings]]
+name = "HOP"
+class_name = "Hop"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Hop"]

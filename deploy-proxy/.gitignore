@@ -1,0 +1,5 @@
+# 中继令牌与 CF 账号子域：本地部署材料，不进 git
+.relay-token
+.cf-subdomain
+# wrangler 本地缓存
+worker/.wrangler/
