@@ -390,11 +390,10 @@ export default function EndingReport() {
             ? (report.fromAI ? (report.stats?.local ? 'RTX LOCAL AI' : 'CLOUD AI') : 'OFFLINE MODE')
             : 'AI GENERATING'}
         </div>
-        {/* 推理遥测（展台"算力可见化"）：全部来自真实生成过程，字/秒实测不估算；本地/云端如实标注 */}
+        {/* 生成溯源：字数来自真实生成过程；模型名/耗时/字每秒不对观众展示（来源由上方标签承担） */}
         {report?.fromAI && report.stats && (
           <div className="ai-stats" data-testid="ai-stats">
-            {report.stats.model} · AI 生成 {report.stats.chars} 字 / {report.stats.seconds.toFixed(1)}s
-            · <b>{report.stats.charsPerSec} 字/秒</b>{report.stats.local && ' · 零云端请求'}
+            AI 生成 {report.stats.chars} 字
           </div>
         )}
         <div className="rk">人生预演报告 · TYPE <span data-testid="type-code">{typeCode}</span></div>
