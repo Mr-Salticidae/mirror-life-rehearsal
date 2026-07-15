@@ -98,8 +98,7 @@ export default function EndingReport() {
       tl: timeline.map(t => [t.nodeId, t.choice]),
       sc: g.gameScore,
       ...(report.fromAI
-        ? { ai: 1 as const, ps: report.paragraphs, fw: report.finalWord,
-            cs: report.stats?.charsPerSec }
+        ? { ai: 1 as const, ps: report.paragraphs, fw: report.finalWord }
         : { ai: 0 as const, rg: g.regret ? 1 as const : 0 as const, gd: g.gameDetail }),
     }
     // 码密度预算降配（云端叙事字数足，完整一局的基础载荷都可能超预算）：
@@ -320,9 +319,7 @@ export default function EndingReport() {
       const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
       const serial = `MLR-${ymd}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
       const trace = rep.fromAI && rep.stats
-        ? (rep.stats.local
-            ? `档案 ${serial} · RTX 本地 AI 实时生成 · ${rep.stats.charsPerSec} 字/秒 · 零云端请求`
-            : `档案 ${serial} · AI 实时生成 · ${rep.stats.model} · ${rep.stats.charsPerSec} 字/秒`)
+        ? `档案 ${serial} · AI 生成 ${rep.stats.chars} 字`
         : `档案 ${serial} · 离线预演档案`
       ctx.fillStyle = 'rgba(216,184,120,.55)'
       ctx.font = '15px monospace'

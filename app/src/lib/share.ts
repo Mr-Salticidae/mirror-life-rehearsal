@@ -17,7 +17,7 @@ export interface SharePayload {
   ps?: string[]           // 三段叙事（仅 ai=1）
   fw?: string             // 结语（仅 ai=1）
   m?: string              // 模型名（已停发——手机页不展示，省码密度；保留字段兼容旧码）
-  cs?: number             // 字/秒（仅 ai=1）
+  cs?: number             // 字/秒（已停发，同上——手机页字数改由 ps/fw 长度自算）
   rg?: 0 | 1              // 遗憾标记（仅 ai=0，模板种子）
   gd?: string             // 职业体验短句（仅 ai=0，模板种子）
   sc?: number             // 游戏得分
