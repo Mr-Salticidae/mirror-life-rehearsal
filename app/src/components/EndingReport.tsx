@@ -393,7 +393,7 @@ export default function EndingReport() {
         {/* 推理遥测（展台"算力可见化"）：全部来自真实生成过程，字/秒实测不估算；本地/云端如实标注 */}
         {report?.fromAI && report.stats && (
           <div className="ai-stats" data-testid="ai-stats">
-            {report.stats.model} · {report.stats.local ? '本地生成' : '云端生成'} {report.stats.chars} 字 / {report.stats.seconds.toFixed(1)}s
+            {report.stats.model} · AI 生成 {report.stats.chars} 字 / {report.stats.seconds.toFixed(1)}s
             · <b>{report.stats.charsPerSec} 字/秒</b>{report.stats.local && ' · 零云端请求'}
           </div>
         )}
