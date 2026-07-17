@@ -119,7 +119,7 @@ export default function App() {
         <div className="top-bar">
           <span>MIRROR LIFE REHEARSAL</span>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <span>BW · GENJI · RTX LOCAL AI</span>
+            <span>INTERACTIVE FILM · 互动影游</span>
             <button onClick={() => { setMuted(!muted); setM(!muted) }}>
               声音 {muted ? '关' : '开'}
             </button>

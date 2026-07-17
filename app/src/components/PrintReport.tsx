@@ -178,7 +178,7 @@ export default function PrintReport(p: Props) {
 
         <footer className="ps-foot">
           <div>镜 像 自 我 · 人 生 预 演</div>
-          <span>POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD</span>
+          <span>MIRROR LIFE REHEARSAL · INTERACTIVE FILM</span>
         </footer>
       </div>
 

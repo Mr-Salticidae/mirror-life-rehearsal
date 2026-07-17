@@ -73,7 +73,7 @@ export default function AttractMode() {
         )}
       </div>
 
-      <div className="rtx">POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD</div>
+      <div className="rtx">AN OFFLINE INTERACTIVE LIFE SIMULATION</div>
       {offline && (
         <div className="offline-badge" data-testid="offline-badge">
           ⬤ 已 离 线 · 本 地 A I 独 立 运 行 中

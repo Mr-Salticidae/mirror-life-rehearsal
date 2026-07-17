@@ -314,7 +314,7 @@ export default function EndingReport() {
       ctx.fillText('镜 像 自 我 · 人 生 预 演', 90, H - 134)
       ctx.fillStyle = 'rgba(255,255,255,.4)'
       ctx.font = '17px sans-serif'
-      ctx.fillText('POWERED BY RTX LOCAL AI · GENJI @ BILIBILI WORLD', 90, H - 96)
+      ctx.fillText('MIRROR LIFE REHEARSAL · INTERACTIVE FILM', 90, H - 96)
       const d = new Date()
       const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
       const serial = `MLR-${ymd}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
@@ -384,7 +384,7 @@ export default function EndingReport() {
       <div className="report-card">
         <div className="ai-tag">
           {report
-            ? (report.fromAI ? (report.stats?.local ? 'RTX LOCAL AI' : 'CLOUD AI') : 'OFFLINE MODE')
+            ? (report.fromAI ? (report.stats?.local ? 'LOCAL AI' : 'CLOUD AI') : 'OFFLINE MODE')
             : 'AI GENERATING'}
         </div>
         {/* 生成溯源：字数来自真实生成过程；模型名/耗时/字每秒不对观众展示（来源由上方标签承担） */}
