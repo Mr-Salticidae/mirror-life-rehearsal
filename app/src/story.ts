@@ -100,7 +100,7 @@ export const CAREER_INFO: Record<Career, {
     typeCode: 'CNTV',
   },
   astronaut: {
-    name: '宇航员', title: '失重', game: 'flight',
+    name: '宇航员', title: '突围', game: 'flight',
     gameHint: '← → 移动 · 自动射击 · 躲避陨石与弹幕 · 拾取 P 升级火力',
     introStill: 'career_astronaut', endStill: 'end_astronaut',
     introLines: [
